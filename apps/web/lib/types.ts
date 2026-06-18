@@ -1,0 +1,48 @@
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
+  roleName: string
+  permissions: string[]
+}
+
+export interface Role {
+  id: string
+  name: string
+  description: string | null
+  permissionKeys: string[]
+}
+
+export interface Permission {
+  id: string
+  key: string
+  description: string | null
+}
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  active: boolean
+  roleId: string
+  role: { id: string; name: string }
+}
+
+export interface Warehouse {
+  id: string
+  code: string
+  name: string
+  address: string | null
+  active: boolean
+  _count?: { areas: number }
+}
+
+export interface Area {
+  id: string
+  code: string
+  name: string
+  barcode: string | null
+  active: boolean
+  warehouseId: string
+  warehouse?: { id: string; code: string; name: string }
+}

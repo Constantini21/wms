@@ -6,5 +6,7 @@ export const PERMISSIONS = {
   WAREHOUSES_READ: 'warehouses.read',
   WAREHOUSES_WRITE: 'warehouses.write',
   AREAS_READ: 'areas.read',
-  AREAS_WRITE: 'areas.write'
+  AREAS_WRITE: 'areas.write',
+  LOCATIONS_READ: 'locations.read',
+  LOCATIONS_WRITE: 'locations.write'
 } as const

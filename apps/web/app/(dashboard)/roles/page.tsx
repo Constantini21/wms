@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -102,21 +103,27 @@ export default function RolesPage() {
       <PageHeader
         title="Perfis e permissões"
         description="Defina os perfis de acesso e suas permissões"
-        action={canWrite && <Button onClick={openCreate}>Novo perfil</Button>}
+        action={
+          canWrite && (
+            <Button onClick={openCreate}>
+              <FiPlus /> Novo perfil
+            </Button>
+          )
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {roles.map((role) => (
           <div
             key={role.id}
-            className="rounded-lg border border-slate-200 bg-white p-5"
+            className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-slate-800">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
                   {role.name}
                 </h3>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {role.description ?? 'Sem descrição'}
                 </p>
               </div>
@@ -125,7 +132,7 @@ export default function RolesPage() {
               {role.permissionKeys.map((key) => (
                 <span
                   key={key}
-                  className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                  className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
                 >
                   {key}
                 </span>
@@ -139,10 +146,10 @@ export default function RolesPage() {
             {canWrite && (
               <div className="mt-4 flex gap-2">
                 <Button variant="ghost" onClick={() => openEdit(role)}>
-                  Editar
+                  <FiEdit2 /> Editar
                 </Button>
                 <Button variant="danger" onClick={() => remove(role.id)}>
-                  Remover
+                  <FiTrash2 /> Remover
                 </Button>
               </div>
             )}
@@ -170,14 +177,14 @@ export default function RolesPage() {
             }
           />
           <div>
-            <p className="mb-2 text-sm font-medium text-slate-700">
+            <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
               Permissões
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {permissions.map((permission) => (
                 <label
                   key={permission.id}
-                  className="flex items-center gap-2 text-sm text-slate-600"
+                  className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
                 >
                   <input
                     type="checkbox"

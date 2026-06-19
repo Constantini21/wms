@@ -11,40 +11,46 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
 import { CodeLabel } from '@/components/CodeLabel'
-import type { Area, Warehouse } from '@/lib/types'
+import type { Area, Location } from '@/lib/types'
 
 interface FormState {
   code: string
   name: string
-  warehouseId: string
+  areaId: string
+  aisle: string
+  floor: string
+  position: string
   barcode: string
 }
 
 const emptyForm: FormState = {
   code: '',
   name: '',
-  warehouseId: '',
+  areaId: '',
+  aisle: '',
+  floor: '',
+  position: '',
   barcode: ''
 }
 
-export default function AreasPage() {
+export default function LocationsPage() {
   const { hasPermission } = useAuth()
-  const canWrite = hasPermission(PERMISSIONS.AREAS_WRITE)
+  const canWrite = hasPermission(PERMISSIONS.LOCATIONS_WRITE)
+  const [locations, setLocations] = useState<Location[]>([])
   const [areas, setAreas] = useState<Area[]>([])
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
-  const [labelArea, setLabelArea] = useState<Area | null>(null)
+  const [labelLocation, setLabelLocation] = useState<Location | null>(null)
 
   const load = useCallback(async () => {
-    const [areaData, warehouseData] = await Promise.all([
-      apiRequest<Area[]>('/areas'),
-      apiRequest<Warehouse[]>('/warehouses')
+    const [locationData, areaData] = await Promise.all([
+      apiRequest<Location[]>('/locations'),
+      apiRequest<Area[]>('/areas')
     ])
+    setLocations(locationData)
     setAreas(areaData)
-    setWarehouses(warehouseData)
   }, [])
 
   useEffect(() => {
@@ -53,18 +59,21 @@ export default function AreasPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ ...emptyForm, warehouseId: warehouses[0]?.id ?? '' })
+    setForm({ ...emptyForm, areaId: areas[0]?.id ?? '' })
     setError(null)
     setModalOpen(true)
   }
 
-  const openEdit = (area: Area) => {
-    setEditingId(area.id)
+  const openEdit = (location: Location) => {
+    setEditingId(location.id)
     setForm({
-      code: area.code,
-      name: area.name,
-      warehouseId: area.warehouseId,
-      barcode: area.barcode ?? ''
+      code: location.code,
+      name: location.name ?? '',
+      areaId: location.areaId,
+      aisle: location.aisle ?? '',
+      floor: location.floor ?? '',
+      position: location.position ?? '',
+      barcode: location.barcode ?? ''
     })
     setError(null)
     setModalOpen(true)
@@ -76,46 +85,49 @@ export default function AreasPage() {
     try {
       const body = {
         code: form.code,
-        name: form.name,
-        warehouseId: form.warehouseId,
+        name: form.name || undefined,
+        areaId: form.areaId,
+        aisle: form.aisle || undefined,
+        floor: form.floor || undefined,
+        position: form.position || undefined,
         barcode: form.barcode || undefined
       }
       if (editingId) {
-        await apiRequest(`/areas/${editingId}`, { method: 'PATCH', body })
+        await apiRequest(`/locations/${editingId}`, { method: 'PATCH', body })
         setModalOpen(false)
+        await load()
       } else {
-        const created = await apiRequest<Area>('/areas', {
+        const created = await apiRequest<Location>('/locations', {
           method: 'POST',
           body
         })
         setModalOpen(false)
         await load()
-        setLabelArea(created)
-        return
+        const area = areas.find((a) => a.id === created.areaId)
+        setLabelLocation({ ...created, area })
       }
-      await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
     }
   }
 
   const remove = async (id: string) => {
-    if (!window.confirm('Deseja remover esta área?')) {
+    if (!window.confirm('Deseja remover esta localização?')) {
       return
     }
-    await apiRequest(`/areas/${id}`, { method: 'DELETE' })
+    await apiRequest(`/locations/${id}`, { method: 'DELETE' })
     await load()
   }
 
   return (
     <div>
       <PageHeader
-        title="Áreas"
-        description="Cadastro de áreas vinculadas aos galpões"
+        title="Localizações"
+        description="Posições de estoque: corredor, andar e posição dentro de cada área"
         action={
           canWrite && (
             <Button onClick={openCreate}>
-              <FiPlus /> Nova área
+              <FiPlus /> Nova localização
             </Button>
           )
         }
@@ -126,43 +138,46 @@ export default function AreasPage() {
           <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
             <tr>
               <th className="px-4 py-3 font-medium">Código</th>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">Galpão</th>
-              <th className="px-4 py-3 font-medium">Código de barras</th>
+              <th className="px-4 py-3 font-medium">Área</th>
+              <th className="px-4 py-3 font-medium">Corredor</th>
+              <th className="px-4 py-3 font-medium">Andar</th>
+              <th className="px-4 py-3 font-medium">Posição</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700 dark:divide-slate-800 dark:text-slate-200">
-            {areas.map((area) => (
+            {locations.map((location) => (
               <tr
-                key={area.id}
+                key={location.id}
                 className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
               >
-                <td className="px-4 py-3 font-medium">{area.code}</td>
-                <td className="px-4 py-3">{area.name}</td>
+                <td className="px-4 py-3 font-medium">{location.code}</td>
                 <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                  {area.warehouse?.name ?? '-'}
+                  {location.area?.name ?? '-'}
                 </td>
-                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                  {area.barcode ?? '-'}
-                </td>
+                <td className="px-4 py-3">{location.aisle ?? '-'}</td>
+                <td className="px-4 py-3">{location.floor ?? '-'}</td>
+                <td className="px-4 py-3">{location.position ?? '-'}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-1">
                     <Button
                       variant="ghost"
-                      onClick={() => setLabelArea(area)}
+                      onClick={() => setLabelLocation(location)}
                       title="Ver / imprimir etiqueta"
                     >
                       <FiPrinter />
                     </Button>
                     {canWrite && (
                       <>
-                        <Button variant="ghost" onClick={() => openEdit(area)}>
+                        <Button
+                          variant="ghost"
+                          onClick={() => openEdit(location)}
+                        >
                           <FiEdit2 />
                         </Button>
                         <Button
                           variant="danger"
-                          onClick={() => remove(area.id)}
+                          onClick={() => remove(location.id)}
                         >
                           <FiTrash2 />
                         </Button>
@@ -172,13 +187,13 @@ export default function AreasPage() {
                 </td>
               </tr>
             ))}
-            {areas.length === 0 && (
+            {locations.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-4 py-6 text-center text-slate-400"
                 >
-                  Nenhuma área cadastrada
+                  Nenhuma localização cadastrada
                 </td>
               </tr>
             )}
@@ -188,24 +203,26 @@ export default function AreasPage() {
 
       <Modal
         open={modalOpen}
-        title={editingId ? 'Editar área' : 'Nova área'}
+        title={editingId ? 'Editar localização' : 'Nova localização'}
         onClose={() => setModalOpen(false)}
       >
         <form onSubmit={submit} className="flex flex-col gap-4">
           <Select
-            label="Galpão"
-            value={form.warehouseId}
+            label="Área"
+            value={form.areaId}
             onChange={(event) =>
-              setForm({ ...form, warehouseId: event.target.value })
+              setForm({ ...form, areaId: event.target.value })
             }
             required
           >
             <option value="" disabled>
-              Selecione um galpão
+              Selecione uma área
             </option>
-            {warehouses.map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.name}
+            {areas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.warehouse?.name
+                  ? `${area.warehouse.name} • ${area.name}`
+                  : area.name}
               </option>
             ))}
           </Select>
@@ -216,11 +233,33 @@ export default function AreasPage() {
             required
           />
           <Input
-            label="Nome"
+            label="Nome (opcional)"
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
           />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Input
+              label="Corredor"
+              value={form.aisle}
+              onChange={(event) =>
+                setForm({ ...form, aisle: event.target.value })
+              }
+            />
+            <Input
+              label="Andar"
+              value={form.floor}
+              onChange={(event) =>
+                setForm({ ...form, floor: event.target.value })
+              }
+            />
+            <Input
+              label="Posição"
+              value={form.position}
+              onChange={(event) =>
+                setForm({ ...form, position: event.target.value })
+              }
+            />
+          </div>
           <Input
             label="Código de barras / QR (opcional)"
             value={form.barcode}
@@ -244,15 +283,15 @@ export default function AreasPage() {
       </Modal>
 
       <Modal
-        open={labelArea !== null}
-        title="Etiqueta da área"
-        onClose={() => setLabelArea(null)}
+        open={labelLocation !== null}
+        title="Etiqueta da localização"
+        onClose={() => setLabelLocation(null)}
       >
-        {labelArea && (
+        {labelLocation && (
           <CodeLabel
-            value={labelArea.barcode || labelArea.code}
-            title={labelArea.name}
-            subtitle={`Galpão: ${labelArea.warehouse?.name ?? '-'} • Código: ${labelArea.code}`}
+            value={labelLocation.barcode || labelLocation.code}
+            title={labelLocation.name || labelLocation.code}
+            subtitle={`Área: ${labelLocation.area?.name ?? '-'} • Corredor ${labelLocation.aisle ?? '-'} / Andar ${labelLocation.floor ?? '-'} / Pos ${labelLocation.position ?? '-'}`}
           />
         )}
       </Modal>

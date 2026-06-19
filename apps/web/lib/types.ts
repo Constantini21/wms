@@ -45,4 +45,23 @@ export interface Area {
   active: boolean
   warehouseId: string
   warehouse?: { id: string; code: string; name: string }
+  _count?: { locations: number }
+}
+
+export interface Location {
+  id: string
+  code: string
+  name: string | null
+  aisle: string | null
+  floor: string | null
+  position: string | null
+  barcode: string | null
+  active: boolean
+  areaId: string
+  area?: {
+    id: string
+    code: string
+    name: string
+    warehouse?: { id: string; code: string; name: string }
+  }
 }

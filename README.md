@@ -19,8 +19,12 @@ for a complete Warehouse Management System.
 - Multi-user with roles and granular permissions (RBAC)
 - Warehouses (galpões) registration
 - Areas registration (linked to warehouses)
-- Barcode / QR code reader to locate areas
-- App shell layout with responsive sidebar
+- Locations registration (aisle / floor / position) inside areas
+- QR code + barcode label generation and printing for areas and locations
+- Barcode / QR code reader (camera) with selectable mode (all / QR / barcode)
+- 3D isometric warehouse map (areas and stacked floors/positions)
+- Light / dark theme toggle (Tailwind class-based theme)
+- Responsive layout with app shell and collapsible sidebar (mobile friendly)
 
 ## Database conventions
 
@@ -88,9 +92,10 @@ bun run dev
 ## Permissions
 
 `users.read`, `users.write`, `roles.read`, `roles.write`,
-`warehouses.read`, `warehouses.write`, `areas.read`, `areas.write`
+`warehouses.read`, `warehouses.write`, `areas.read`, `areas.write`,
+`locations.read`, `locations.write`
 
 Seeded roles:
 
 - **Administrator** — all permissions
-- **Operator** — warehouse/area read + area write
+- **Operator** — warehouse read + area/location read & write

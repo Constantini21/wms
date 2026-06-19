@@ -1,15 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { IconType } from 'react-icons'
+import { FiGrid, FiLayers, FiMapPin, FiUser } from 'react-icons/fi'
 import { useAuth } from '@/lib/auth'
 import { apiRequest } from '@/lib/api'
 import { PERMISSIONS } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
-import type { Area, Warehouse } from '@/lib/types'
+import type { Area, Location, Warehouse } from '@/lib/types'
 
 interface StatCard {
   label: string
   value: number | string
+  icon: IconType
+  color: string
 }
 
 export default function DashboardPage() {
@@ -21,13 +25,37 @@ export default function DashboardPage() {
       const cards: StatCard[] = []
       if (hasPermission(PERMISSIONS.WAREHOUSES_READ)) {
         const warehouses = await apiRequest<Warehouse[]>('/warehouses')
-        cards.push({ label: 'Galpões', value: warehouses.length })
+        cards.push({
+          label: 'Galpões',
+          value: warehouses.length,
+          icon: FiGrid,
+          color: 'from-blue-500 to-blue-600'
+        })
       }
       if (hasPermission(PERMISSIONS.AREAS_READ)) {
         const areas = await apiRequest<Area[]>('/areas')
-        cards.push({ label: 'Áreas', value: areas.length })
+        cards.push({
+          label: 'Áreas',
+          value: areas.length,
+          icon: FiLayers,
+          color: 'from-indigo-500 to-indigo-600'
+        })
       }
-      cards.push({ label: 'Perfil', value: user?.roleName ?? '-' })
+      if (hasPermission(PERMISSIONS.LOCATIONS_READ)) {
+        const locations = await apiRequest<Location[]>('/locations')
+        cards.push({
+          label: 'Localizações',
+          value: locations.length,
+          icon: FiMapPin,
+          color: 'from-emerald-500 to-emerald-600'
+        })
+      }
+      cards.push({
+        label: 'Perfil',
+        value: user?.roleName ?? '-',
+        icon: FiUser,
+        color: 'from-slate-500 to-slate-600'
+      })
       setStats(cards)
     }
     load().catch(() => undefined)
@@ -39,18 +67,28 @@ export default function DashboardPage() {
         title={`Bem-vindo, ${user?.name ?? ''}`}
         description="Visão geral do sistema de gestão de armazém"
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <p className="text-sm text-slate-500">{stat.label}</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-800">
-              {stat.value}
-            </p>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => {
+          const Icon = stat.icon
+          return (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-transform hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900"
+            >
+              <div
+                className={`mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br text-white ${stat.color}`}
+              >
+                <Icon className="text-xl" />
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {stat.label}
+              </p>
+              <p className="mt-1 text-3xl font-semibold text-slate-800 dark:text-slate-100">
+                {stat.value}
+              </p>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

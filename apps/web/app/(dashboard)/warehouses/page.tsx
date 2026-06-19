@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -91,12 +92,18 @@ export default function WarehousesPage() {
       <PageHeader
         title="Galpões"
         description="Cadastro de galpões do armazém"
-        action={canWrite && <Button onClick={openCreate}>Novo galpão</Button>}
+        action={
+          canWrite && (
+            <Button onClick={openCreate}>
+              <FiPlus /> Novo galpão
+            </Button>
+          )
+        }
       />
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
             <tr>
               <th className="px-4 py-3 font-medium">Código</th>
               <th className="px-4 py-3 font-medium">Nome</th>
@@ -105,31 +112,32 @@ export default function WarehousesPage() {
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 text-slate-700 dark:divide-slate-800 dark:text-slate-200">
             {warehouses.map((warehouse) => (
-              <tr key={warehouse.id}>
-                <td className="px-4 py-3 font-medium text-slate-700">
-                  {warehouse.code}
-                </td>
+              <tr
+                key={warehouse.id}
+                className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
+              >
+                <td className="px-4 py-3 font-medium">{warehouse.code}</td>
                 <td className="px-4 py-3">{warehouse.name}</td>
-                <td className="px-4 py-3 text-slate-500">
+                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                   {warehouse.address ?? '-'}
                 </td>
                 <td className="px-4 py-3">{warehouse._count?.areas ?? 0}</td>
                 <td className="px-4 py-3 text-right">
                   {canWrite && (
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost"
                         onClick={() => openEdit(warehouse)}
                       >
-                        Editar
+                        <FiEdit2 />
                       </Button>
                       <Button
                         variant="danger"
                         onClick={() => remove(warehouse.id)}
                       >
-                        Remover
+                        <FiTrash2 />
                       </Button>
                     </div>
                   )}

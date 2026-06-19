@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center text-slate-500">
+      <div className="flex h-screen items-center justify-center text-slate-500 dark:text-slate-400">
         Carregando...
       </div>
     )
@@ -30,7 +30,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar onToggleSidebar={() => setSidebarOpen((value) => !value)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-slate-100 p-4 transition-colors dark:bg-slate-950 lg:p-8">
+          {children}
+        </main>
       </div>
     </div>
   )

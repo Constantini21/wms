@@ -67,16 +67,35 @@ model Warehouse {
 }
 
 model Area {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   code        String
   name        String
-  barcode     String?   @unique
-  warehouseId String    @map("warehouse_id")
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  barcode     String?    @unique
+  warehouseId String     @map("warehouse_id")
+  warehouse   Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  locations   Location[]
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
   @@unique([warehouseId, code])
   @@map("areas")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  code      String
+  name      String?
+  aisle     String?  @map("aisle")
+  floor     String?  @map("floor")
+  position  String?  @map("position")
+  barcode   String?  @unique
+  areaId    String   @map("area_id")
+  area      Area     @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([areaId, code])
+  @@map("locations")
 }

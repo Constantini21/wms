@@ -74,6 +74,8 @@ model Area {
   aisles           Int        @default(1) @map("aisles")
   levels           Int        @default(1) @map("levels")
   positionsPerLevel Int       @default(1) @map("positions_per_level")
+  mapX             Float?     @map("map_x")
+  mapZ             Float?     @map("map_z")
   warehouseId      String     @map("warehouse_id")
   warehouse        Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   locations        Location[]

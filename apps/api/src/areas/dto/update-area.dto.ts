@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -41,6 +42,14 @@ export class UpdateAreaDto {
   @Min(1)
   @Max(100)
   positionsPerLevel?: number
+
+  @IsOptional()
+  @IsNumber()
+  mapX?: number
+
+  @IsOptional()
+  @IsNumber()
+  mapZ?: number
 
   @IsOptional()
   @IsBoolean()

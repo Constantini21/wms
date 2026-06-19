@@ -53,6 +53,8 @@ export interface Area {
   aisles: number
   levels: number
   positionsPerLevel: number
+  mapX?: number | null
+  mapZ?: number | null
   active: boolean
   warehouseId: string
   warehouse?: { id: string; code: string; name: string }

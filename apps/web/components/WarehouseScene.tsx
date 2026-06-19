@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, ThreeEvent } from '@react-three/fiber'
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei'
 import { BackSide } from 'three'
 
@@ -13,12 +13,16 @@ export interface SceneArea {
   aisles: number
   levels: number
   positionsPerLevel: number
+  mapX?: number | null
+  mapZ?: number | null
 }
 
 interface WarehouseSceneProps {
   areas: SceneArea[]
   selectedId: string | null
   onSelect: (id: string) => void
+  editable?: boolean
+  onMove?: (id: string, x: number, z: number) => void
 }
 
 const palette = [
@@ -58,28 +62,32 @@ interface RackProps {
   position: [number, number, number]
   color: { base: string; shelf: string }
   selected: boolean
+  editable: boolean
   onSelect: (id: string) => void
+  onStartDrag: (id: string) => void
 }
 
-function Rack({ area, position, color, selected, onSelect }: RackProps) {
+function Rack({
+  area,
+  position,
+  color,
+  selected,
+  editable,
+  onSelect,
+  onStartDrag
+}: RackProps) {
   const [hovered, setHovered] = useState(false)
   const { positions, aisles, levels, width, depth, height } = rackSize(area)
 
-  const bins: { key: string; pos: [number, number, number]; shade: number }[] =
-    []
+  const bins: { key: string; pos: [number, number, number] }[] = []
   const shelves: [number, number, number][] = []
   for (let a = 0; a < aisles; a += 1) {
     const z = -depth / 2 + (a + 0.5) * STEP
     for (let l = 0; l < levels; l += 1) {
-      const y = (l + 0.5) * STEP
       shelves.push([0, l * STEP, z])
       for (let p = 0; p < positions; p += 1) {
         const x = -width / 2 + (p + 0.5) * STEP
-        bins.push({
-          key: `${a}-${l}-${p}`,
-          pos: [x, y, z],
-          shade: 0.6 + (l / Math.max(1, levels - 1)) * 0.4
-        })
+        bins.push({ key: `${a}-${l}-${p}`, pos: [x, (l + 0.5) * STEP, z] })
       }
     }
   }
@@ -93,17 +101,23 @@ function Rack({ area, position, color, selected, onSelect }: RackProps) {
 
   return (
     <group position={position}>
-      {/* clickable footprint */}
       <mesh
         position={[0, height / 2, 0]}
         onClick={(event) => {
           event.stopPropagation()
           onSelect(area.id)
         }}
+        onPointerDown={(event) => {
+          if (editable) {
+            event.stopPropagation()
+            onSelect(area.id)
+            onStartDrag(area.id)
+          }
+        }}
         onPointerOver={(event) => {
           event.stopPropagation()
           setHovered(true)
-          document.body.style.cursor = 'pointer'
+          document.body.style.cursor = editable ? 'grab' : 'pointer'
         }}
         onPointerOut={() => {
           setHovered(false)
@@ -126,7 +140,7 @@ function Rack({ area, position, color, selected, onSelect }: RackProps) {
       ))}
 
       {shelves.map((s, i) => (
-        <mesh key={`shelf-${i}`} position={[s[0], s[1], s[2]]} receiveShadow>
+        <mesh key={`shelf-${i}`} position={s} receiveShadow>
           <boxGeometry args={[width + 0.12, 0.04, BIN + 0.06]} />
           <meshStandardMaterial color={color.shelf} roughness={0.7} />
         </mesh>
@@ -179,40 +193,77 @@ function Rack({ area, position, color, selected, onSelect }: RackProps) {
 export default function WarehouseScene({
   areas,
   selectedId,
-  onSelect
+  onSelect,
+  editable = false,
+  onMove
 }: WarehouseSceneProps) {
-  const { layout, room } = useMemo(() => {
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [live, setLive] = useState<Record<string, [number, number]>>({})
+
+  const autoLayout = useMemo(() => {
     const sizes = areas.map(rackSize)
     const cellX = Math.max(2.5, ...sizes.map((s) => s.width)) + 2
     const cellZ = Math.max(2.5, ...sizes.map((s) => s.depth)) + 2.5
     const cols = Math.max(1, Math.ceil(Math.sqrt(areas.length)))
-    const rows = Math.ceil(areas.length / cols)
-    const items = areas.map((area, index) => {
+    const map: Record<string, [number, number]> = {}
+    areas.forEach((area, index) => {
       const col = index % cols
       const row = Math.floor(index / cols)
-      return {
-        area,
-        color: palette[index % palette.length],
-        position: [
-          (col - (cols - 1) / 2) * cellX,
-          0,
-          (row - (rows - 1) / 2) * cellZ
-        ] as [number, number, number]
-      }
+      const rows = Math.ceil(areas.length / cols)
+      map[area.id] = [
+        (col - (cols - 1) / 2) * cellX,
+        (row - (rows - 1) / 2) * cellZ
+      ]
     })
-    const width = Math.max(16, cols * cellX + 4)
-    const depth = Math.max(16, rows * cellZ + 4)
-    return { layout: items, room: { width, depth, height: 9 } }
+    return map
   }, [areas])
+
+  const resolvePos = (area: SceneArea): [number, number] => {
+    if (live[area.id]) {
+      return live[area.id]
+    }
+    if (area.mapX != null && area.mapZ != null) {
+      return [area.mapX, area.mapZ]
+    }
+    return autoLayout[area.id] ?? [0, 0]
+  }
+
+  const items = areas.map((area, index) => ({
+    area,
+    color: palette[index % palette.length],
+    xz: resolvePos(area)
+  }))
+
+  const bound = Math.max(
+    16,
+    ...items.map((i) => Math.max(Math.abs(i.xz[0]), Math.abs(i.xz[1])) + 4)
+  )
+  const room = { width: bound * 2 + 4, depth: bound * 2 + 4, height: 9 }
+
+  const handleDragMove = (event: ThreeEvent<PointerEvent>) => {
+    if (dragId) {
+      setLive((prev) => ({
+        ...prev,
+        [dragId]: [event.point.x, event.point.z]
+      }))
+    }
+  }
+
+  const handleDragEnd = () => {
+    if (dragId && live[dragId] && onMove) {
+      onMove(dragId, live[dragId][0], live[dragId][1])
+    }
+    setDragId(null)
+  }
 
   return (
     <Canvas
       shadows
-      camera={{ position: [room.width * 0.5, 7, room.depth * 0.6], fov: 45 }}
+      camera={{ position: [room.width * 0.45, 8, room.depth * 0.55], fov: 45 }}
       style={{ width: '100%', height: '100%' }}
     >
       <color attach="background" args={['#0b1120']} />
-      <fog attach="fog" args={['#0b1120', 22, 60]} />
+      <fog attach="fog" args={['#0b1120', 26, 80]} />
 
       <ambientLight intensity={0.55} />
       <hemisphereLight args={['#dbeafe', '#1e293b', 0.5]} />
@@ -224,22 +275,12 @@ export default function WarehouseScene({
         shadow-mapSize-height={1024}
       />
       <pointLight position={[0, room.height - 1, 0]} intensity={0.6} />
-      <pointLight
-        position={[-room.width / 3, room.height - 1, -room.depth / 3]}
-        intensity={0.4}
-      />
-      <pointLight
-        position={[room.width / 3, room.height - 1, room.depth / 3]}
-        intensity={0.4}
-      />
 
-      {/* enclosed warehouse room (visible from inside) */}
       <mesh position={[0, room.height / 2, 0]}>
         <boxGeometry args={[room.width, room.height, room.depth]} />
         <meshStandardMaterial color="#cbd5e1" side={BackSide} roughness={1} />
       </mesh>
 
-      {/* concrete floor */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.01, 0]}
@@ -249,11 +290,10 @@ export default function WarehouseScene({
         <meshStandardMaterial color="#94a3b8" roughness={1} />
       </mesh>
       <gridHelper
-        args={[Math.max(room.width, room.depth), 30, '#64748b', '#7c899c']}
+        args={[Math.max(room.width, room.depth), 40, '#64748b', '#7c899c']}
         position={[0, 0.02, 0]}
       />
 
-      {/* ceiling light strips */}
       {[-room.depth / 4, room.depth / 4].map((z, i) => (
         <mesh key={i} position={[0, room.height - 0.1, z]}>
           <boxGeometry args={[room.width * 0.6, 0.1, 0.4]} />
@@ -265,14 +305,29 @@ export default function WarehouseScene({
         </mesh>
       ))}
 
-      {layout.map(({ area, position, color }) => (
+      {/* drag catcher while moving a rack */}
+      {dragId && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.05, 0]}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+        >
+          <planeGeometry args={[room.width * 2, room.depth * 2]} />
+          <meshBasicMaterial transparent opacity={0} />
+        </mesh>
+      )}
+
+      {items.map(({ area, color, xz }) => (
         <Rack
           key={area.id}
           area={area}
-          position={position}
+          position={[xz[0], 0, xz[1]]}
           color={color}
           selected={selectedId === area.id}
+          editable={editable}
           onSelect={onSelect}
+          onStartDrag={setDragId}
         />
       ))}
 
@@ -285,9 +340,10 @@ export default function WarehouseScene({
       />
       <OrbitControls
         makeDefault
+        enabled={dragId === null}
         enablePan
         minDistance={4}
-        maxDistance={50}
+        maxDistance={70}
         maxPolarAngle={Math.PI / 2.05}
         target={[0, 1.5, 0]}
       />

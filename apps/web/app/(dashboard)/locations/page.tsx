@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
+import { DataTable, Column } from '@/components/ui/DataTable'
 import { CodeLabel } from '@/components/CodeLabel'
-import type { Area, Location } from '@/lib/types'
+import type { Area, Location, Paginated } from '@/lib/types'
 
 interface FormState {
   code: string
@@ -32,11 +33,14 @@ const emptyForm: FormState = {
   position: '',
   barcode: ''
 }
+const PAGE_SIZE = 20
 
 export default function LocationsPage() {
   const { hasPermission } = useAuth()
   const canWrite = hasPermission(PERMISSIONS.LOCATIONS_WRITE)
   const [locations, setLocations] = useState<Location[]>([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [areas, setAreas] = useState<Area[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -44,18 +48,24 @@ export default function LocationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [labelLocation, setLabelLocation] = useState<Location | null>(null)
 
-  const load = useCallback(async () => {
-    const [locationData, areaData] = await Promise.all([
-      apiRequest<Location[]>('/locations'),
-      apiRequest<Area[]>('/areas')
-    ])
-    setLocations(locationData)
-    setAreas(areaData)
+  const load = useCallback(async (target: number) => {
+    const result = await apiRequest<Paginated<Location>>(
+      `/locations?page=${target}&pageSize=${PAGE_SIZE}`
+    )
+    setLocations(result.data)
+    setTotal(result.total)
+    setPage(result.page)
+  }, [])
+
+  const loadAreas = useCallback(async () => {
+    const result = await apiRequest<Paginated<Area>>('/areas?all=true')
+    setAreas(result.data)
   }, [])
 
   useEffect(() => {
-    load().catch(() => undefined)
-  }, [load])
+    load(1).catch(() => undefined)
+    loadAreas().catch(() => undefined)
+  }, [load, loadAreas])
 
   const openCreate = () => {
     setEditingId(null)
@@ -95,14 +105,14 @@ export default function LocationsPage() {
       if (editingId) {
         await apiRequest(`/locations/${editingId}`, { method: 'PATCH', body })
         setModalOpen(false)
-        await load()
+        await load(page)
       } else {
         const created = await apiRequest<Location>('/locations', {
           method: 'POST',
           body
         })
         setModalOpen(false)
-        await load()
+        await load(1)
         const area = areas.find((a) => a.id === created.areaId)
         setLabelLocation({ ...created, area })
       }
@@ -116,8 +126,52 @@ export default function LocationsPage() {
       return
     }
     await apiRequest(`/locations/${id}`, { method: 'DELETE' })
-    await load()
+    const nextPage = locations.length === 1 && page > 1 ? page - 1 : page
+    await load(nextPage)
   }
+
+  const columns: Column<Location>[] = [
+    {
+      header: 'Código',
+      cell: (l) => <span className="font-medium">{l.code}</span>
+    },
+    {
+      header: 'Área',
+      cell: (l) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {l.area?.name ?? '-'}
+        </span>
+      )
+    },
+    { header: 'Corredor', cell: (l) => l.aisle ?? '-' },
+    { header: 'Andar', cell: (l) => l.floor ?? '-' },
+    { header: 'Posição', cell: (l) => l.position ?? '-' },
+    {
+      header: '',
+      align: 'right',
+      cell: (l) => (
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            onClick={() => setLabelLocation(l)}
+            title="Ver / imprimir etiqueta"
+          >
+            <FiPrinter />
+          </Button>
+          {canWrite && (
+            <>
+              <Button variant="ghost" onClick={() => openEdit(l)}>
+                <FiEdit2 />
+              </Button>
+              <Button variant="danger" onClick={() => remove(l.id)}>
+                <FiTrash2 />
+              </Button>
+            </>
+          )}
+        </div>
+      )
+    }
+  ]
 
   return (
     <div>
@@ -133,73 +187,16 @@ export default function LocationsPage() {
         }
       />
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-            <tr>
-              <th className="px-4 py-3 font-medium">Código</th>
-              <th className="px-4 py-3 font-medium">Área</th>
-              <th className="px-4 py-3 font-medium">Corredor</th>
-              <th className="px-4 py-3 font-medium">Andar</th>
-              <th className="px-4 py-3 font-medium">Posição</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700 dark:divide-slate-800 dark:text-slate-200">
-            {locations.map((location) => (
-              <tr
-                key={location.id}
-                className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-              >
-                <td className="px-4 py-3 font-medium">{location.code}</td>
-                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                  {location.area?.name ?? '-'}
-                </td>
-                <td className="px-4 py-3">{location.aisle ?? '-'}</td>
-                <td className="px-4 py-3">{location.floor ?? '-'}</td>
-                <td className="px-4 py-3">{location.position ?? '-'}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setLabelLocation(location)}
-                      title="Ver / imprimir etiqueta"
-                    >
-                      <FiPrinter />
-                    </Button>
-                    {canWrite && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          onClick={() => openEdit(location)}
-                        >
-                          <FiEdit2 />
-                        </Button>
-                        <Button
-                          variant="danger"
-                          onClick={() => remove(location.id)}
-                        >
-                          <FiTrash2 />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {locations.length === 0 && (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-6 text-center text-slate-400"
-                >
-                  Nenhuma localização cadastrada
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={locations}
+        rowKey={(l) => l.id}
+        emptyMessage="Nenhuma localização cadastrada"
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPageChange={(p) => load(p)}
+      />
 
       <Modal
         open={modalOpen}

@@ -2,17 +2,29 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateAreaDto } from './dto/create-area.dto'
 import { UpdateAreaDto } from './dto/update-area.dto'
+import { getPaging, paginated, PaginationQueryDto } from '../common/pagination'
 
 @Injectable()
 export class AreasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(warehouseId?: string) {
-    return this.prisma.area.findMany({
-      where: warehouseId ? { warehouseId } : undefined,
-      include: { warehouse: { select: { id: true, code: true, name: true } } },
-      orderBy: { createdAt: 'desc' }
-    })
+  async findAll(warehouseId?: string, query: PaginationQueryDto = {}) {
+    const { all, page, pageSize, skip, take } = getPaging(query)
+    const where = warehouseId ? { warehouseId } : {}
+    const include = {
+      warehouse: { select: { id: true, code: true, name: true } },
+      _count: { select: { locations: true } }
+    }
+    const orderBy = { createdAt: 'desc' as const }
+    if (all) {
+      const data = await this.prisma.area.findMany({ where, include, orderBy })
+      return paginated(data, data.length, 1, data.length || 1)
+    }
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.area.findMany({ where, include, orderBy, skip, take }),
+      this.prisma.area.count({ where })
+    ])
+    return paginated(data, total, page, pageSize)
   }
 
   async findOne(id: string) {

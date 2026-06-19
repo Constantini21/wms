@@ -6,16 +6,25 @@ import {
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateWarehouseDto } from './dto/create-warehouse.dto'
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto'
+import { getPaging, paginated, PaginationQueryDto } from '../common/pagination'
 
 @Injectable()
 export class WarehousesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.warehouse.findMany({
-      include: { _count: { select: { areas: true } } },
-      orderBy: { createdAt: 'desc' }
-    })
+  async findAll(query: PaginationQueryDto = {}) {
+    const { all, page, pageSize, skip, take } = getPaging(query)
+    const include = { _count: { select: { areas: true } } }
+    const orderBy = { createdAt: 'desc' as const }
+    if (all) {
+      const data = await this.prisma.warehouse.findMany({ include, orderBy })
+      return paginated(data, data.length, 1, data.length || 1)
+    }
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.warehouse.findMany({ include, orderBy, skip, take }),
+      this.prisma.warehouse.count()
+    ])
+    return paginated(data, total, page, pageSize)
   }
 
   async findOne(id: string) {

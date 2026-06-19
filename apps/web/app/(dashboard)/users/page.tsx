@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
-import type { Role, User } from '@/lib/types'
+import { DataTable, Column } from '@/components/ui/DataTable'
+import type { Paginated, Role, User } from '@/lib/types'
 
 interface FormState {
   name: string
@@ -27,29 +28,38 @@ const emptyForm: FormState = {
   roleId: '',
   active: true
 }
+const PAGE_SIZE = 20
 
 export default function UsersPage() {
   const { hasPermission } = useAuth()
   const canWrite = hasPermission(PERMISSIONS.USERS_WRITE)
   const [users, setUsers] = useState<User[]>([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [roles, setRoles] = useState<Role[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    const [userData, roleData] = await Promise.all([
-      apiRequest<User[]>('/users'),
-      apiRequest<Role[]>('/roles')
-    ])
-    setUsers(userData)
-    setRoles(roleData)
+  const load = useCallback(async (target: number) => {
+    const result = await apiRequest<Paginated<User>>(
+      `/users?page=${target}&pageSize=${PAGE_SIZE}`
+    )
+    setUsers(result.data)
+    setTotal(result.total)
+    setPage(result.page)
+  }, [])
+
+  const loadRoles = useCallback(async () => {
+    const result = await apiRequest<Paginated<Role>>('/roles?all=true')
+    setRoles(result.data)
   }, [])
 
   useEffect(() => {
-    load().catch(() => undefined)
-  }, [load])
+    load(1).catch(() => undefined)
+    loadRoles().catch(() => undefined)
+  }, [load, loadRoles])
 
   const openCreate = () => {
     setEditingId(null)
@@ -86,6 +96,8 @@ export default function UsersPage() {
           body.password = form.password
         }
         await apiRequest(`/users/${editingId}`, { method: 'PATCH', body })
+        setModalOpen(false)
+        await load(page)
       } else {
         await apiRequest('/users', {
           method: 'POST',
@@ -97,9 +109,9 @@ export default function UsersPage() {
             active: form.active
           }
         })
+        setModalOpen(false)
+        await load(1)
       }
-      setModalOpen(false)
-      await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
     }
@@ -110,8 +122,52 @@ export default function UsersPage() {
       return
     }
     await apiRequest(`/users/${id}`, { method: 'DELETE' })
-    await load()
+    const nextPage = users.length === 1 && page > 1 ? page - 1 : page
+    await load(nextPage)
   }
+
+  const columns: Column<User>[] = [
+    {
+      header: 'Nome',
+      cell: (u) => <span className="font-medium">{u.name}</span>
+    },
+    {
+      header: 'E-mail',
+      cell: (u) => (
+        <span className="text-slate-500 dark:text-slate-400">{u.email}</span>
+      )
+    },
+    { header: 'Perfil', cell: (u) => u.role.name },
+    {
+      header: 'Status',
+      cell: (u) => (
+        <span
+          className={`rounded-full px-2 py-1 text-xs ${
+            u.active
+              ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300'
+              : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+          }`}
+        >
+          {u.active ? 'Ativo' : 'Inativo'}
+        </span>
+      )
+    },
+    {
+      header: '',
+      align: 'right',
+      cell: (u) =>
+        canWrite && (
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" onClick={() => openEdit(u)}>
+              <FiEdit2 />
+            </Button>
+            <Button variant="danger" onClick={() => remove(u.id)}>
+              <FiTrash2 />
+            </Button>
+          </div>
+        )
+    }
+  ]
 
   return (
     <div>
@@ -127,66 +183,16 @@ export default function UsersPage() {
         }
       />
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-            <tr>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">E-mail</th>
-              <th className="px-4 py-3 font-medium">Perfil</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700 dark:divide-slate-800 dark:text-slate-200">
-            {users.map((user) => (
-              <tr
-                key={user.id}
-                className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-              >
-                <td className="px-4 py-3 font-medium">{user.name}</td>
-                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                  {user.email}
-                </td>
-                <td className="px-4 py-3">{user.role.name}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs ${
-                      user.active
-                        ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300'
-                        : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    {user.active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {canWrite && (
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" onClick={() => openEdit(user)}>
-                        <FiEdit2 />
-                      </Button>
-                      <Button variant="danger" onClick={() => remove(user.id)}>
-                        <FiTrash2 />
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-6 text-center text-slate-400"
-                >
-                  Nenhum usuário cadastrado
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={users}
+        rowKey={(u) => u.id}
+        emptyMessage="Nenhum usuário cadastrado"
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPageChange={(p) => load(p)}
+      />
 
       <Modal
         open={modalOpen}

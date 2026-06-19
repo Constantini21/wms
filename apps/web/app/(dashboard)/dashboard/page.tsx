@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth'
 import { apiRequest } from '@/lib/api'
 import { PERMISSIONS } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
-import type { Area, Location, Warehouse } from '@/lib/types'
+import type { Area, Location, Paginated, Warehouse } from '@/lib/types'
 
 interface StatCard {
   label: string
@@ -24,28 +24,32 @@ export default function DashboardPage() {
     const load = async () => {
       const cards: StatCard[] = []
       if (hasPermission(PERMISSIONS.WAREHOUSES_READ)) {
-        const warehouses = await apiRequest<Warehouse[]>('/warehouses')
+        const warehouses = await apiRequest<Paginated<Warehouse>>(
+          '/warehouses?pageSize=1'
+        )
         cards.push({
           label: 'Galpões',
-          value: warehouses.length,
+          value: warehouses.total,
           icon: FiGrid,
           color: 'from-blue-500 to-blue-600'
         })
       }
       if (hasPermission(PERMISSIONS.AREAS_READ)) {
-        const areas = await apiRequest<Area[]>('/areas')
+        const areas = await apiRequest<Paginated<Area>>('/areas?pageSize=1')
         cards.push({
           label: 'Áreas',
-          value: areas.length,
+          value: areas.total,
           icon: FiLayers,
           color: 'from-indigo-500 to-indigo-600'
         })
       }
       if (hasPermission(PERMISSIONS.LOCATIONS_READ)) {
-        const locations = await apiRequest<Location[]>('/locations')
+        const locations = await apiRequest<Paginated<Location>>(
+          '/locations?pageSize=1'
+        )
         cards.push({
           label: 'Localizações',
-          value: locations.length,
+          value: locations.total,
           icon: FiMapPin,
           color: 'from-emerald-500 to-emerald-600'
         })

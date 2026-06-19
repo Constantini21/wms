@@ -7,7 +7,7 @@ import { apiRequest } from '@/lib/api'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Select } from '@/components/ui/Select'
 import type { SceneArea } from '@/components/WarehouseScene'
-import type { Area, Location, Warehouse } from '@/lib/types'
+import type { Area, Location, Paginated, Warehouse } from '@/lib/types'
 
 const WarehouseScene = dynamic(() => import('@/components/WarehouseScene'), {
   ssr: false,
@@ -27,15 +27,15 @@ export default function WarehouseMapPage() {
 
   const load = useCallback(async () => {
     const [wh, ar, loc] = await Promise.all([
-      apiRequest<Warehouse[]>('/warehouses'),
-      apiRequest<Area[]>('/areas'),
-      apiRequest<Location[]>('/locations')
+      apiRequest<Paginated<Warehouse>>('/warehouses?all=true'),
+      apiRequest<Paginated<Area>>('/areas?all=true'),
+      apiRequest<Paginated<Location>>('/locations?all=true')
     ])
-    setWarehouses(wh)
-    setAreas(ar)
-    setLocations(loc)
-    if (wh[0]) {
-      setWarehouseId((current) => current || wh[0].id)
+    setWarehouses(wh.data)
+    setAreas(ar.data)
+    setLocations(loc.data)
+    if (wh.data[0]) {
+      setWarehouseId((current) => current || wh.data[0].id)
     }
   }, [])
 

@@ -9,7 +9,8 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import type { Permission, Role } from '@/lib/types'
+import { Pagination } from '@/components/ui/Pagination'
+import type { Paginated, Permission, Role } from '@/lib/types'
 
 interface FormState {
   name: string
@@ -18,28 +19,35 @@ interface FormState {
 }
 
 const emptyForm: FormState = { name: '', description: '', permissionKeys: [] }
+const PAGE_SIZE = 20
 
 export default function RolesPage() {
   const { hasPermission } = useAuth()
   const canWrite = hasPermission(PERMISSIONS.ROLES_WRITE)
   const [roles, setRoles] = useState<Role[]>([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (target: number) => {
     const [roleData, permissionData] = await Promise.all([
-      apiRequest<Role[]>('/roles'),
+      apiRequest<Paginated<Role>>(
+        `/roles?page=${target}&pageSize=${PAGE_SIZE}`
+      ),
       apiRequest<Permission[]>('/roles/permissions')
     ])
-    setRoles(roleData)
+    setRoles(roleData.data)
+    setTotal(roleData.total)
+    setPage(roleData.page)
     setPermissions(permissionData)
   }, [])
 
   useEffect(() => {
-    load().catch(() => undefined)
+    load(1).catch(() => undefined)
   }, [load])
 
   const openCreate = () => {
@@ -84,7 +92,7 @@ export default function RolesPage() {
         await apiRequest('/roles', { method: 'POST', body })
       }
       setModalOpen(false)
-      await load()
+      await load(editingId ? page : 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
     }
@@ -95,7 +103,8 @@ export default function RolesPage() {
       return
     }
     await apiRequest(`/roles/${id}`, { method: 'DELETE' })
-    await load()
+    const nextPage = roles.length === 1 && page > 1 ? page - 1 : page
+    await load(nextPage)
   }
 
   return (
@@ -156,6 +165,17 @@ export default function RolesPage() {
           </div>
         ))}
       </div>
+
+      {total > PAGE_SIZE && (
+        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={(p) => load(p)}
+          />
+        </div>
+      )}
 
       <Modal
         open={modalOpen}

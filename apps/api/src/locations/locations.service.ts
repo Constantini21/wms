@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateLocationDto } from './dto/create-location.dto'
 import { UpdateLocationDto } from './dto/update-location.dto'
+import { getPaging, paginated, PaginationQueryDto } from '../common/pagination'
 
 const locationInclude = {
   area: {
@@ -18,12 +19,33 @@ const locationInclude = {
 export class LocationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(areaId?: string) {
-    return this.prisma.location.findMany({
-      where: areaId ? { areaId } : undefined,
-      include: locationInclude,
-      orderBy: [{ aisle: 'asc' }, { floor: 'asc' }, { position: 'asc' }]
-    })
+  async findAll(areaId?: string, query: PaginationQueryDto = {}) {
+    const { all, page, pageSize, skip, take } = getPaging(query)
+    const where = areaId ? { areaId } : {}
+    const orderBy = [
+      { aisle: 'asc' as const },
+      { floor: 'asc' as const },
+      { position: 'asc' as const }
+    ]
+    if (all) {
+      const data = await this.prisma.location.findMany({
+        where,
+        include: locationInclude,
+        orderBy
+      })
+      return paginated(data, data.length, 1, data.length || 1)
+    }
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.location.findMany({
+        where,
+        include: locationInclude,
+        orderBy,
+        skip,
+        take
+      }),
+      this.prisma.location.count({ where })
+    ])
+    return paginated(data, total, page, pageSize)
   }
 
   async findOne(id: string) {

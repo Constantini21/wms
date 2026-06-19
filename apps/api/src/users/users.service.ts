@@ -7,6 +7,7 @@ import * as bcrypt from 'bcryptjs'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
+import { getPaging, paginated, PaginationQueryDto } from '../common/pagination'
 
 const userSelect = {
   id: true,
@@ -23,11 +24,21 @@ const userSelect = {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return this.prisma.user.findMany({
-      select: userSelect,
-      orderBy: { createdAt: 'desc' }
-    })
+  async findAll(query: PaginationQueryDto = {}) {
+    const { all, page, pageSize, skip, take } = getPaging(query)
+    const orderBy = { createdAt: 'desc' as const }
+    if (all) {
+      const data = await this.prisma.user.findMany({
+        select: userSelect,
+        orderBy
+      })
+      return paginated(data, data.length, 1, data.length || 1)
+    }
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({ select: userSelect, orderBy, skip, take }),
+      this.prisma.user.count()
+    ])
+    return paginated(data, total, page, pageSize)
   }
 
   async findOne(id: string) {

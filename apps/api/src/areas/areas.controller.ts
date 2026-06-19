@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { PermissionsGuard } from '../auth/guards/permissions.guard'
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator'
 import { PERMISSIONS } from '../auth/permissions'
+import { PaginationQueryDto } from '../common/pagination'
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('areas')
@@ -24,8 +25,11 @@ export class AreasController {
 
   @RequirePermissions(PERMISSIONS.AREAS_READ)
   @Get()
-  findAll(@Query('warehouseId') warehouseId?: string) {
-    return this.areasService.findAll(warehouseId)
+  findAll(
+    @Query() query: PaginationQueryDto,
+    @Query('warehouseId') warehouseId?: string
+  ) {
+    return this.areasService.findAll(warehouseId, query)
   }
 
   @RequirePermissions(PERMISSIONS.AREAS_READ)

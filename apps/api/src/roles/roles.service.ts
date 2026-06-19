@@ -2,17 +2,31 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateRoleDto } from './dto/create-role.dto'
 import { UpdateRoleDto } from './dto/update-role.dto'
+import { getPaging, paginated, PaginationQueryDto } from '../common/pagination'
 
 @Injectable()
 export class RolesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
-    const roles = await this.prisma.role.findMany({
-      include: { permissions: { include: { permission: true } } },
-      orderBy: { name: 'asc' }
-    })
-    return roles.map((role) => this.serialize(role))
+  async findAll(query: PaginationQueryDto = {}) {
+    const { all, page, pageSize, skip, take } = getPaging(query)
+    const include = { permissions: { include: { permission: true } } }
+    const orderBy = { name: 'asc' as const }
+    if (all) {
+      const roles = await this.prisma.role.findMany({ include, orderBy })
+      const data = roles.map((role) => this.serialize(role))
+      return paginated(data, data.length, 1, data.length || 1)
+    }
+    const [roles, total] = await this.prisma.$transaction([
+      this.prisma.role.findMany({ include, orderBy, skip, take }),
+      this.prisma.role.count()
+    ])
+    return paginated(
+      roles.map((role) => this.serialize(role)),
+      total,
+      page,
+      pageSize
+    )
   }
 
   async findOne(id: string) {

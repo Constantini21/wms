@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
+import { DataTable, Column } from '@/components/ui/DataTable'
 import { CodeLabel } from '@/components/CodeLabel'
-import type { Area, Warehouse } from '@/lib/types'
+import type { Area, Paginated, Warehouse } from '@/lib/types'
 
 interface FormState {
   code: string
@@ -26,11 +27,14 @@ const emptyForm: FormState = {
   warehouseId: '',
   barcode: ''
 }
+const PAGE_SIZE = 20
 
 export default function AreasPage() {
   const { hasPermission } = useAuth()
   const canWrite = hasPermission(PERMISSIONS.AREAS_WRITE)
   const [areas, setAreas] = useState<Area[]>([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -38,18 +42,26 @@ export default function AreasPage() {
   const [error, setError] = useState<string | null>(null)
   const [labelArea, setLabelArea] = useState<Area | null>(null)
 
-  const load = useCallback(async () => {
-    const [areaData, warehouseData] = await Promise.all([
-      apiRequest<Area[]>('/areas'),
-      apiRequest<Warehouse[]>('/warehouses')
-    ])
-    setAreas(areaData)
-    setWarehouses(warehouseData)
+  const load = useCallback(async (target: number) => {
+    const result = await apiRequest<Paginated<Area>>(
+      `/areas?page=${target}&pageSize=${PAGE_SIZE}`
+    )
+    setAreas(result.data)
+    setTotal(result.total)
+    setPage(result.page)
+  }, [])
+
+  const loadWarehouses = useCallback(async () => {
+    const result = await apiRequest<Paginated<Warehouse>>(
+      '/warehouses?all=true'
+    )
+    setWarehouses(result.data)
   }, [])
 
   useEffect(() => {
-    load().catch(() => undefined)
-  }, [load])
+    load(1).catch(() => undefined)
+    loadWarehouses().catch(() => undefined)
+  }, [load, loadWarehouses])
 
   const openCreate = () => {
     setEditingId(null)
@@ -83,17 +95,17 @@ export default function AreasPage() {
       if (editingId) {
         await apiRequest(`/areas/${editingId}`, { method: 'PATCH', body })
         setModalOpen(false)
+        await load(page)
       } else {
         const created = await apiRequest<Area>('/areas', {
           method: 'POST',
           body
         })
         setModalOpen(false)
-        await load()
-        setLabelArea(created)
-        return
+        await load(1)
+        const warehouse = warehouses.find((w) => w.id === created.warehouseId)
+        setLabelArea({ ...created, warehouse })
       }
-      await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
     }
@@ -104,8 +116,58 @@ export default function AreasPage() {
       return
     }
     await apiRequest(`/areas/${id}`, { method: 'DELETE' })
-    await load()
+    const nextPage = areas.length === 1 && page > 1 ? page - 1 : page
+    await load(nextPage)
   }
+
+  const columns: Column<Area>[] = [
+    {
+      header: 'Código',
+      cell: (a) => <span className="font-medium">{a.code}</span>
+    },
+    { header: 'Nome', cell: (a) => a.name },
+    {
+      header: 'Galpão',
+      cell: (a) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {a.warehouse?.name ?? '-'}
+        </span>
+      )
+    },
+    {
+      header: 'Cód. barras',
+      cell: (a) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {a.barcode ?? '-'}
+        </span>
+      )
+    },
+    {
+      header: '',
+      align: 'right',
+      cell: (a) => (
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            onClick={() => setLabelArea(a)}
+            title="Ver / imprimir etiqueta"
+          >
+            <FiPrinter />
+          </Button>
+          {canWrite && (
+            <>
+              <Button variant="ghost" onClick={() => openEdit(a)}>
+                <FiEdit2 />
+              </Button>
+              <Button variant="danger" onClick={() => remove(a.id)}>
+                <FiTrash2 />
+              </Button>
+            </>
+          )}
+        </div>
+      )
+    }
+  ]
 
   return (
     <div>
@@ -121,70 +183,16 @@ export default function AreasPage() {
         }
       />
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-            <tr>
-              <th className="px-4 py-3 font-medium">Código</th>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">Galpão</th>
-              <th className="px-4 py-3 font-medium">Código de barras</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700 dark:divide-slate-800 dark:text-slate-200">
-            {areas.map((area) => (
-              <tr
-                key={area.id}
-                className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-              >
-                <td className="px-4 py-3 font-medium">{area.code}</td>
-                <td className="px-4 py-3">{area.name}</td>
-                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                  {area.warehouse?.name ?? '-'}
-                </td>
-                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                  {area.barcode ?? '-'}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setLabelArea(area)}
-                      title="Ver / imprimir etiqueta"
-                    >
-                      <FiPrinter />
-                    </Button>
-                    {canWrite && (
-                      <>
-                        <Button variant="ghost" onClick={() => openEdit(area)}>
-                          <FiEdit2 />
-                        </Button>
-                        <Button
-                          variant="danger"
-                          onClick={() => remove(area.id)}
-                        >
-                          <FiTrash2 />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {areas.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-6 text-center text-slate-400"
-                >
-                  Nenhuma área cadastrada
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={areas}
+        rowKey={(a) => a.id}
+        emptyMessage="Nenhuma área cadastrada"
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPageChange={(p) => load(p)}
+      />
 
       <Modal
         open={modalOpen}

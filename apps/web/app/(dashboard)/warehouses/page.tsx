@@ -9,7 +9,8 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import type { Warehouse } from '@/lib/types'
+import { DataTable, Column } from '@/components/ui/DataTable'
+import type { Paginated, Warehouse } from '@/lib/types'
 
 interface FormState {
   code: string
@@ -18,23 +19,30 @@ interface FormState {
 }
 
 const emptyForm: FormState = { code: '', name: '', address: '' }
+const PAGE_SIZE = 20
 
 export default function WarehousesPage() {
   const { hasPermission } = useAuth()
   const canWrite = hasPermission(PERMISSIONS.WAREHOUSES_WRITE)
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    const data = await apiRequest<Warehouse[]>('/warehouses')
-    setWarehouses(data)
+  const load = useCallback(async (target: number) => {
+    const result = await apiRequest<Paginated<Warehouse>>(
+      `/warehouses?page=${target}&pageSize=${PAGE_SIZE}`
+    )
+    setWarehouses(result.data)
+    setTotal(result.total)
+    setPage(result.page)
   }, [])
 
   useEffect(() => {
-    load().catch(() => undefined)
+    load(1).catch(() => undefined)
   }, [load])
 
   const openCreate = () => {
@@ -65,15 +73,12 @@ export default function WarehousesPage() {
         address: form.address || undefined
       }
       if (editingId) {
-        await apiRequest(`/warehouses/${editingId}`, {
-          method: 'PATCH',
-          body
-        })
+        await apiRequest(`/warehouses/${editingId}`, { method: 'PATCH', body })
       } else {
         await apiRequest('/warehouses', { method: 'POST', body })
       }
       setModalOpen(false)
-      await load()
+      await load(editingId ? page : 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
     }
@@ -84,8 +89,41 @@ export default function WarehousesPage() {
       return
     }
     await apiRequest(`/warehouses/${id}`, { method: 'DELETE' })
-    await load()
+    const nextPage = warehouses.length === 1 && page > 1 ? page - 1 : page
+    await load(nextPage)
   }
+
+  const columns: Column<Warehouse>[] = [
+    {
+      header: 'Código',
+      cell: (w) => <span className="font-medium">{w.code}</span>
+    },
+    { header: 'Nome', cell: (w) => w.name },
+    {
+      header: 'Endereço',
+      cell: (w) => (
+        <span className="text-slate-500 dark:text-slate-400">
+          {w.address ?? '-'}
+        </span>
+      )
+    },
+    { header: 'Áreas', cell: (w) => w._count?.areas ?? 0 },
+    {
+      header: '',
+      align: 'right',
+      cell: (w) =>
+        canWrite && (
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" onClick={() => openEdit(w)}>
+              <FiEdit2 />
+            </Button>
+            <Button variant="danger" onClick={() => remove(w.id)}>
+              <FiTrash2 />
+            </Button>
+          </div>
+        )
+    }
+  ]
 
   return (
     <div>
@@ -101,62 +139,16 @@ export default function WarehousesPage() {
         }
       />
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-          <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
-            <tr>
-              <th className="px-4 py-3 font-medium">Código</th>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">Endereço</th>
-              <th className="px-4 py-3 font-medium">Áreas</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700 dark:divide-slate-800 dark:text-slate-200">
-            {warehouses.map((warehouse) => (
-              <tr
-                key={warehouse.id}
-                className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-              >
-                <td className="px-4 py-3 font-medium">{warehouse.code}</td>
-                <td className="px-4 py-3">{warehouse.name}</td>
-                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                  {warehouse.address ?? '-'}
-                </td>
-                <td className="px-4 py-3">{warehouse._count?.areas ?? 0}</td>
-                <td className="px-4 py-3 text-right">
-                  {canWrite && (
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        onClick={() => openEdit(warehouse)}
-                      >
-                        <FiEdit2 />
-                      </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => remove(warehouse.id)}
-                      >
-                        <FiTrash2 />
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {warehouses.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-6 text-center text-slate-400"
-                >
-                  Nenhum galpão cadastrado
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={warehouses}
+        rowKey={(w) => w.id}
+        emptyMessage="Nenhum galpão cadastrado"
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={total}
+        onPageChange={(p) => load(p)}
+      />
 
       <Modal
         open={modalOpen}

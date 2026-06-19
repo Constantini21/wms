@@ -1,3 +1,11 @@
+export interface Paginated<T> {
+  data: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 export interface AuthUser {
   id: string
   name: string

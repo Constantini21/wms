@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards
 } from '@nestjs/common'
 import { RolesService } from './roles.service'
@@ -15,6 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { PermissionsGuard } from '../auth/guards/permissions.guard'
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator'
 import { PERMISSIONS } from '../auth/permissions'
+import { PaginationQueryDto } from '../common/pagination'
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('roles')
@@ -23,8 +25,8 @@ export class RolesController {
 
   @RequirePermissions(PERMISSIONS.ROLES_READ)
   @Get()
-  findAll() {
-    return this.rolesService.findAll()
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.rolesService.findAll(query)
   }
 
   @RequirePermissions(PERMISSIONS.ROLES_READ)

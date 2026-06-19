@@ -3,17 +3,19 @@
 import { FiMoon, FiSun } from 'react-icons/fi'
 import { useTheme } from '@/lib/theme'
 
-export function ThemeToggle() {
+export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
 
-  return (
+  const fullToggle = (
     <button
       onClick={toggleTheme}
       role="switch"
       aria-checked={isDark}
       aria-label="Alternar tema"
-      className="flex w-full items-center justify-between gap-3 rounded-lg bg-slate-800/60 px-3 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-800"
+      className={`w-full items-center justify-between gap-3 rounded-lg bg-slate-800/60 px-3 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-800 ${
+        collapsed ? 'flex lg:hidden' : 'flex'
+      }`}
     >
       <span className="flex items-center gap-2">
         {isDark ? (
@@ -37,5 +39,27 @@ export function ThemeToggle() {
         </span>
       </span>
     </button>
+  )
+
+  if (!collapsed) {
+    return fullToggle
+  }
+
+  return (
+    <>
+      {fullToggle}
+      <button
+        onClick={toggleTheme}
+        aria-label="Alternar tema"
+        title={isDark ? 'Tema escuro' : 'Tema claro'}
+        className="mx-auto hidden h-10 w-10 items-center justify-center rounded-lg bg-slate-800/60 text-slate-200 transition-colors hover:bg-slate-800 lg:flex"
+      >
+        {isDark ? (
+          <FiMoon className="text-indigo-300" />
+        ) : (
+          <FiSun className="text-amber-300" />
+        )}
+      </button>
+    </>
   )
 }

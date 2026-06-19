@@ -2,11 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { FiBox, FiMaximize, FiMinimize, FiMove, FiX } from 'react-icons/fi'
+import {
+  FiBox,
+  FiMaximize,
+  FiMinimize,
+  FiMove,
+  FiTag,
+  FiX
+} from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PERMISSIONS } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Modal } from '@/components/ui/Modal'
+import { CodeLabel } from '@/components/CodeLabel'
 import type { SceneArea } from '@/components/WarehouseScene'
 import type { Area, Location, Paginated, Warehouse } from '@/lib/types'
 
@@ -29,6 +38,11 @@ export default function WarehouseMapPage() {
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [labelTarget, setLabelTarget] = useState<{
+    value: string
+    title: string
+    subtitle?: string
+  } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -116,7 +130,30 @@ export default function WarehouseMapPage() {
     return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]))
   }, [areaLocations])
 
-  const selectedName = sceneAreas.find((a) => a.id === selectedArea)?.name
+  const selectedAreaObj = useMemo(
+    () => areas.find((a) => a.id === selectedArea) ?? null,
+    [areas, selectedArea]
+  )
+  const selectedName = selectedAreaObj?.name
+
+  const openAreaLabel = () => {
+    if (!selectedAreaObj) {
+      return
+    }
+    setLabelTarget({
+      value: selectedAreaObj.barcode || selectedAreaObj.code,
+      title: `Estante ${selectedAreaObj.code}`,
+      subtitle: selectedAreaObj.name
+    })
+  }
+
+  const openLocationLabel = (loc: Location) => {
+    setLabelTarget({
+      value: loc.barcode || loc.code,
+      title: loc.code,
+      subtitle: `${selectedName ?? ''} • Andar ${loc.floor ?? '-'} / Pos ${loc.position ?? '-'}`
+    })
+  }
 
   return (
     <div>
@@ -201,7 +238,10 @@ export default function WarehouseMapPage() {
           <div className="absolute bottom-3 right-3 max-h-[55%] w-72 overflow-y-auto rounded-xl border border-white/10 bg-slate-900/85 p-4 text-slate-100 backdrop-blur">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <FiBox /> {selectedName}
+                <FiBox /> {selectedAreaObj?.code}
+                <span className="font-normal text-slate-400">
+                  {selectedName}
+                </span>
               </h3>
               <button
                 onClick={() => setSelectedArea(null)}
@@ -211,6 +251,12 @@ export default function WarehouseMapPage() {
                 <FiX />
               </button>
             </div>
+            <button
+              onClick={openAreaLabel}
+              className="mb-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              <FiTag /> Etiqueta da estante
+            </button>
             {floors.length === 0 && (
               <p className="text-xs text-slate-400">
                 Nenhuma localização nesta área.
@@ -229,13 +275,14 @@ export default function WarehouseMapPage() {
                         (a.position ?? '').localeCompare(b.position ?? '')
                       )
                       .map((loc) => (
-                        <span
+                        <button
                           key={loc.id}
-                          title={`${loc.code} • acesso ${loc.accessibility}`}
-                          className="flex h-7 w-7 items-center justify-center rounded bg-gradient-to-br from-blue-500 to-indigo-600 text-[9px] font-semibold text-white"
+                          onClick={() => openLocationLabel(loc)}
+                          title={`${loc.code} • acesso ${loc.accessibility} — ver etiqueta`}
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded bg-gradient-to-br from-blue-500 to-indigo-600 text-[9px] font-semibold text-white transition-transform hover:scale-110"
                         >
                           {loc.position ?? loc.code.slice(-2)}
-                        </span>
+                        </button>
                       ))}
                   </div>
                 </div>
@@ -243,6 +290,20 @@ export default function WarehouseMapPage() {
             </div>
           </div>
         )}
+
+        <Modal
+          open={labelTarget !== null}
+          title="Etiqueta"
+          onClose={() => setLabelTarget(null)}
+        >
+          {labelTarget && (
+            <CodeLabel
+              value={labelTarget.value}
+              title={labelTarget.title}
+              subtitle={labelTarget.subtitle}
+            />
+          )}
+        </Modal>
       </div>
     </div>
   )

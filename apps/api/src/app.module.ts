@@ -8,6 +8,7 @@ import { RolesModule } from './roles/roles.module'
 import { WarehousesModule } from './warehouses/warehouses.module'
 import { AreasModule } from './areas/areas.module'
 import { LocationsModule } from './locations/locations.module'
+import { AislesModule } from './aisles/aisles.module'
 import { ProductsModule } from './products/products.module'
 
 @Module({
@@ -21,6 +22,7 @@ import { ProductsModule } from './products/products.module'
     WarehousesModule,
     AreasModule,
     LocationsModule,
+    AislesModule,
     ProductsModule
   ]
 })

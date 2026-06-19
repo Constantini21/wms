@@ -46,6 +46,17 @@ export interface Warehouse {
   _count?: { areas: number }
 }
 
+export interface Aisle {
+  id: string
+  code: string
+  barcode?: string | null
+  levels: number
+  positionsPerLevel: number
+  orderIndex: number
+  areaId?: string
+  _count?: { locations: number }
+}
+
 export interface Area {
   id: string
   code: string
@@ -60,6 +71,7 @@ export interface Area {
   active: boolean
   warehouseId: string
   warehouse?: { id: string; code: string; name: string }
+  corridors?: Aisle[]
   _count?: { locations: number }
 }
 

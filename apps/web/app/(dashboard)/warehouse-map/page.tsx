@@ -123,12 +123,23 @@ export default function WarehouseMapPage() {
           code: area.code,
           name: area.name,
           count: countByArea(area.id),
-          aisles: area.aisles,
-          levels: area.levels,
-          positionsPerLevel: area.positionsPerLevel,
           floor: area.floor,
           mapX: area.mapX,
-          mapZ: area.mapZ
+          mapZ: area.mapZ,
+          corridors:
+            area.corridors && area.corridors.length > 0
+              ? area.corridors.map((c) => ({
+                  id: c.id,
+                  code: c.code,
+                  levels: c.levels,
+                  positionsPerLevel: c.positionsPerLevel
+                }))
+              : Array.from({ length: area.aisles }).map((_, i) => ({
+                  id: `${area.id}-${i}`,
+                  code: `${String.fromCharCode(65 + (i % 26))}${i + 1}`,
+                  levels: area.levels,
+                  positionsPerLevel: area.positionsPerLevel
+                }))
         })),
     [areas, warehouseId, countByArea]
   )
@@ -142,8 +153,8 @@ export default function WarehouseMapPage() {
   }, [locations])
 
   const handleSelectLocation = useCallback(
-    (areaId: string, aisle: number, level: number, position: number) => {
-      const key = `${areaId}|${aisle}|${level}|${String(position).padStart(2, '0')}`
+    (areaId: string, aisleCode: string, level: number, position: number) => {
+      const key = `${areaId}|${aisleCode}|${level}|${String(position).padStart(2, '0')}`
       const loc = locByKey.get(key)
       if (loc) {
         openLocationDetail(loc)

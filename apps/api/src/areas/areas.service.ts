@@ -13,6 +13,16 @@ export class AreasService {
     const where = warehouseId ? { warehouseId } : {}
     const include = {
       warehouse: { select: { id: true, code: true, name: true } },
+      corridors: {
+        select: {
+          id: true,
+          code: true,
+          levels: true,
+          positionsPerLevel: true,
+          orderIndex: true
+        },
+        orderBy: { orderIndex: 'asc' as const }
+      },
       _count: { select: { locations: true } }
     }
     const orderBy = { createdAt: 'desc' as const }
@@ -88,33 +98,48 @@ export class AreasService {
       throw new NotFoundException('Area not found')
     }
 
+    await this.prisma.aisle.deleteMany({ where: { areaId: id } })
     await this.prisma.location.deleteMany({ where: { areaId: id } })
 
-    const rows: {
-      areaId: string
-      code: string
-      name: string
-      aisle: string
-      floor: string
-      position: string
-      barcode: string
-      accessibility: number
-      capacity: number
-    }[] = []
+    let total = 0
+    for (let a = 0; a < area.aisles; a += 1) {
+      const aisleCode = `${String.fromCharCode(65 + (a % 26))}${a + 1}`
+      const aisle = await this.prisma.aisle.create({
+        data: {
+          areaId: id,
+          code: aisleCode,
+          orderIndex: a,
+          levels: area.levels,
+          positionsPerLevel: area.positionsPerLevel,
+          barcode: `${area.code}-${aisleCode}`
+        }
+      })
 
-    for (let aisle = 1; aisle <= area.aisles; aisle += 1) {
+      const rows: {
+        areaId: string
+        aisleId: string
+        code: string
+        name: string
+        aisle: string
+        floor: string
+        position: string
+        barcode: string
+        accessibility: number
+        capacity: number
+      }[] = []
+
       for (let level = 1; level <= area.levels; level += 1) {
         const accessibility = this.accessibilityForLevel(level, area.levels)
         for (let pos = 1; pos <= area.positionsPerLevel; pos += 1) {
-          const aisleLabel = String(aisle)
           const floorLabel = String(level)
           const posLabel = String(pos).padStart(2, '0')
-          const code = `${area.code}-C${aisleLabel}-A${floorLabel}-P${posLabel}`
+          const code = `${area.code}-${aisleCode}-A${floorLabel}-P${posLabel}`
           rows.push({
             areaId: id,
+            aisleId: aisle.id,
             code,
             name: code,
-            aisle: aisleLabel,
+            aisle: aisleCode,
             floor: floorLabel,
             position: posLabel,
             barcode: code,
@@ -123,10 +148,11 @@ export class AreasService {
           })
         }
       }
+      await this.prisma.location.createMany({ data: rows })
+      total += rows.length
     }
 
-    await this.prisma.location.createMany({ data: rows })
-    return { created: rows.length }
+    return { created: total, corridors: area.aisles }
   }
 
   async remove(id: string) {

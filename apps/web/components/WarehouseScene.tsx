@@ -5,17 +5,22 @@ import { Canvas, ThreeEvent, useThree } from '@react-three/fiber'
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei'
 import { BackSide } from 'three'
 
+export interface SceneCorridor {
+  id: string
+  code: string
+  levels: number
+  positionsPerLevel: number
+}
+
 export interface SceneArea {
   id: string
   code: string
   name: string
   count: number
-  aisles: number
-  levels: number
-  positionsPerLevel: number
   floor: number
   mapX?: number | null
   mapZ?: number | null
+  corridors: SceneCorridor[]
 }
 
 interface WarehouseSceneProps {
@@ -24,7 +29,7 @@ interface WarehouseSceneProps {
   onSelect: (id: string) => void
   onSelectLocation?: (
     areaId: string,
-    aisle: number,
+    aisleCode: string,
     level: number,
     position: number
   ) => void
@@ -44,132 +49,169 @@ const palette = [
   { base: '#ef4444', shelf: '#7f1d1d' }
 ]
 
-const BIN = 0.5
-const GAP = 0.07
-const STEP = BIN + GAP
-const FLOOR_GAP = 2.6
+const BIN = 0.42
+const CELLX = 0.52
+const CELLY = 0.52
+const CORR_D = 0.6
+const AISLE_GAP = 0.85
+const FLOOR_GAP = 2.8
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value))
+const clamp = (v: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, v))
 
-function rackSize(area: SceneArea) {
-  const positions = clamp(area.positionsPerLevel, 1, 12)
-  const aisles = clamp(area.aisles, 1, 4)
-  const levels = clamp(area.levels, 1, 8)
-  return {
-    positions,
-    aisles,
-    levels,
-    width: positions * STEP,
-    depth: aisles * STEP,
-    height: levels * STEP
+function corridorsOf(area: SceneArea): SceneCorridor[] {
+  if (area.corridors && area.corridors.length > 0) {
+    return area.corridors
   }
+  return [{ id: area.id, code: 'A1', levels: 1, positionsPerLevel: 1 }]
 }
 
-interface RackProps {
-  area: SceneArea
-  position: [number, number, number]
-  color: { base: string; shelf: string }
+function areaFootprint(area: SceneArea) {
+  const corr = corridorsOf(area)
+  const maxPos = Math.max(
+    1,
+    ...corr.map((c) => clamp(c.positionsPerLevel, 1, 14))
+  )
+  const maxLevels = Math.max(1, ...corr.map((c) => clamp(c.levels, 1, 8)))
+  const width = maxPos * CELLX
+  const depth = corr.length * (CORR_D + AISLE_GAP)
+  const height = maxLevels * CELLY
+  return { corr, width, depth, height }
+}
+
+interface BinProps {
+  pos: [number, number, number]
+  color: string
   selected: boolean
   editable: boolean
-  onSelect: (id: string) => void
-  onSelectLocation?: (
-    areaId: string,
-    aisle: number,
-    level: number,
-    position: number
-  ) => void
-  onStartDrag: (id: string) => void
+  onClick: () => void
+  onAreaSelect: () => void
+  onStartDrag: () => void
 }
 
-function Rack({
-  area,
-  position,
+function Bin({
+  pos,
   color,
   selected,
   editable,
-  onSelect,
+  onClick,
+  onAreaSelect,
+  onStartDrag
+}: BinProps) {
+  const [hover, setHover] = useState(false)
+  const z = pos[2] + (hover && !editable ? 0.3 : 0)
+  return (
+    <mesh
+      position={[pos[0], pos[1], z]}
+      castShadow
+      onPointerOver={(e: ThreeEvent<PointerEvent>) => {
+        e.stopPropagation()
+        setHover(true)
+        document.body.style.cursor = editable ? 'grab' : 'pointer'
+      }}
+      onPointerOut={() => {
+        setHover(false)
+        document.body.style.cursor = 'default'
+      }}
+      onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        if (editable) {
+          e.stopPropagation()
+          onAreaSelect()
+          onStartDrag()
+        }
+      }}
+      onClick={(e: ThreeEvent<MouseEvent>) => {
+        e.stopPropagation()
+        if (!editable) {
+          onClick()
+        }
+      }}
+    >
+      <boxGeometry args={[BIN, BIN, BIN]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={hover ? '#ffffff' : color}
+        emissiveIntensity={hover ? 0.6 : selected ? 0.3 : 0.05}
+        roughness={0.5}
+        metalness={0.1}
+      />
+    </mesh>
+  )
+}
+
+interface CorridorProps {
+  areaId: string
+  corridor: SceneCorridor
+  z: number
+  color: { base: string; shelf: string }
+  selected: boolean
+  editable: boolean
+  onSelectArea: () => void
+  onSelectLocation?: (
+    areaId: string,
+    aisleCode: string,
+    level: number,
+    position: number
+  ) => void
+  onStartDrag: () => void
+}
+
+function Corridor({
+  areaId,
+  corridor,
+  z,
+  color,
+  selected,
+  editable,
+  onSelectArea,
   onSelectLocation,
   onStartDrag
-}: RackProps) {
-  const [hovered, setHovered] = useState(false)
-  const { positions, aisles, levels, width, depth, height } = rackSize(area)
+}: CorridorProps) {
+  const levels = clamp(corridor.levels, 1, 8)
+  const positions = clamp(corridor.positionsPerLevel, 1, 14)
+  const width = positions * CELLX
+  const height = levels * CELLY
 
-  const partHandlers = (onPrimary: () => void) => ({
-    onPointerOver: (event: ThreeEvent<PointerEvent>) => {
-      event.stopPropagation()
-      setHovered(true)
+  const shelfHandlers = {
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => {
+      e.stopPropagation()
       document.body.style.cursor = editable ? 'grab' : 'pointer'
     },
     onPointerOut: () => {
-      setHovered(false)
       document.body.style.cursor = 'default'
     },
-    onPointerDown: (event: ThreeEvent<PointerEvent>) => {
+    onPointerDown: (e: ThreeEvent<PointerEvent>) => {
       if (editable) {
-        event.stopPropagation()
-        onSelect(area.id)
-        onStartDrag(area.id)
+        e.stopPropagation()
+        onSelectArea()
+        onStartDrag()
       }
     },
-    onClick: (event: ThreeEvent<MouseEvent>) => {
-      event.stopPropagation()
+    onClick: (e: ThreeEvent<MouseEvent>) => {
+      e.stopPropagation()
       if (!editable) {
-        onPrimary()
-      }
-    }
-  })
-
-  const bins: {
-    key: string
-    pos: [number, number, number]
-    a: number
-    l: number
-    p: number
-  }[] = []
-  const shelves: [number, number, number][] = []
-  for (let a = 0; a < aisles; a += 1) {
-    const z = -depth / 2 + (a + 0.5) * STEP
-    for (let l = 0; l < levels; l += 1) {
-      shelves.push([0, l * STEP, z])
-      for (let p = 0; p < positions; p += 1) {
-        const x = -width / 2 + (p + 0.5) * STEP
-        bins.push({
-          key: `${a}-${l}-${p}`,
-          pos: [x, (l + 0.5) * STEP, z],
-          a,
-          l,
-          p
-        })
+        onSelectArea()
       }
     }
   }
 
   const posts: [number, number, number][] = [
-    [-width / 2, height / 2, -depth / 2],
-    [width / 2, height / 2, -depth / 2],
-    [-width / 2, height / 2, depth / 2],
-    [width / 2, height / 2, depth / 2]
+    [-width / 2, height / 2, z - CORR_D / 2],
+    [width / 2, height / 2, z - CORR_D / 2],
+    [-width / 2, height / 2, z + CORR_D / 2],
+    [width / 2, height / 2, z + CORR_D / 2]
   ]
 
-  const selectArea = () => onSelect(area.id)
+  const shelves = []
+  for (let l = 0; l < levels; l += 1) {
+    shelves.push(l * CELLY)
+  }
 
   return (
-    <group position={position}>
-      {/* base slab to select the rack when clicking gaps */}
-      <mesh position={[0, 0.05, 0]} {...partHandlers(selectArea)}>
-        <boxGeometry args={[width + 0.3, 0.1, depth + 0.3]} />
-        <meshBasicMaterial transparent opacity={0} />
-      </mesh>
-
+    <group>
       {posts.map((p, i) => (
-        <mesh
-          key={`post-${i}`}
-          position={p}
-          castShadow
-          {...partHandlers(selectArea)}
-        >
-          <boxGeometry args={[0.08, height, 0.08]} />
+        <mesh key={`post-${i}`} position={p} castShadow {...shelfHandlers}>
+          <boxGeometry args={[0.06, height, 0.06]} />
           <meshStandardMaterial
             color="#334155"
             metalness={0.6}
@@ -178,44 +220,139 @@ function Rack({
         </mesh>
       ))}
 
-      {shelves.map((s, i) => (
+      {shelves.map((y, i) => (
         <mesh
           key={`shelf-${i}`}
-          position={s}
+          position={[0, y, z]}
           receiveShadow
-          {...partHandlers(selectArea)}
+          {...shelfHandlers}
         >
-          <boxGeometry args={[width + 0.12, 0.04, BIN + 0.06]} />
+          <boxGeometry args={[width + 0.1, 0.04, CORR_D]} />
           <meshStandardMaterial color={color.shelf} roughness={0.7} />
         </mesh>
       ))}
 
-      {bins.map((bin) => (
-        <mesh
-          key={bin.key}
-          position={bin.pos}
-          castShadow
-          {...partHandlers(() =>
-            onSelectLocation?.(area.id, bin.a + 1, bin.l + 1, bin.p + 1)
-          )}
-        >
-          <boxGeometry args={[BIN, BIN, BIN]} />
-          <meshStandardMaterial
-            color={color.base}
-            emissive={color.base}
-            emissiveIntensity={selected ? 0.35 : hovered ? 0.2 : 0.05}
-            roughness={0.5}
-            metalness={0.1}
-          />
-        </mesh>
-      ))}
-
-      {selected && (
-        <mesh position={[0, height / 2, 0]}>
-          <boxGeometry args={[width + 0.35, height + 0.35, depth + 0.35]} />
-          <meshBasicMaterial color="#ffffff" wireframe />
-        </mesh>
+      {shelves.map((_, l) =>
+        Array.from({ length: positions }).map((__, p) => {
+          const x = -width / 2 + (p + 0.5) * CELLX
+          return (
+            <Bin
+              key={`bin-${l}-${p}`}
+              pos={[x, (l + 0.5) * CELLY, z]}
+              color={color.base}
+              selected={selected}
+              editable={editable}
+              onClick={() =>
+                onSelectLocation?.(areaId, corridor.code, l + 1, p + 1)
+              }
+              onAreaSelect={onSelectArea}
+              onStartDrag={onStartDrag}
+            />
+          )
+        })
       )}
+
+      <Html
+        position={[-width / 2 - 0.3, 0.25, z]}
+        center
+        distanceFactor={12}
+        zIndexRange={[28, 0]}
+      >
+        <div
+          style={{
+            padding: '1px 6px',
+            borderRadius: 5,
+            background: 'rgba(2,6,23,0.85)',
+            color: '#93c5fd',
+            fontSize: 11,
+            fontWeight: 700,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {corridor.code}
+        </div>
+      </Html>
+    </group>
+  )
+}
+
+interface AreaGroupProps {
+  area: SceneArea
+  position: [number, number, number]
+  color: { base: string; shelf: string }
+  selected: boolean
+  editable: boolean
+  onSelect: (id: string) => void
+  onSelectLocation?: (
+    areaId: string,
+    aisleCode: string,
+    level: number,
+    position: number
+  ) => void
+  onStartDrag: (id: string) => void
+}
+
+function AreaGroup({
+  area,
+  position,
+  color,
+  selected,
+  editable,
+  onSelect,
+  onSelectLocation,
+  onStartDrag
+}: AreaGroupProps) {
+  const { corr, width, depth, height } = areaFootprint(area)
+  const selectArea = () => onSelect(area.id)
+  const startDrag = () => onStartDrag(area.id)
+
+  return (
+    <group position={position}>
+      <mesh
+        position={[0, 0.05, 0]}
+        onPointerOver={(e: ThreeEvent<PointerEvent>) => {
+          e.stopPropagation()
+          document.body.style.cursor = editable ? 'grab' : 'pointer'
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'default'
+        }}
+        onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+          if (editable) {
+            e.stopPropagation()
+            selectArea()
+            startDrag()
+          }
+        }}
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation()
+          if (!editable) {
+            selectArea()
+          }
+        }}
+      >
+        <boxGeometry args={[width + 0.6, 0.1, depth + 0.4]} />
+        <meshStandardMaterial
+          color={selected ? color.base : '#1e293b'}
+          transparent
+          opacity={selected ? 0.25 : 0.12}
+        />
+      </mesh>
+
+      {corr.map((c, ci) => (
+        <Corridor
+          key={c.id}
+          areaId={area.id}
+          corridor={c}
+          z={-depth / 2 + (ci + 0.5) * (CORR_D + AISLE_GAP)}
+          color={color}
+          selected={selected}
+          editable={editable}
+          onSelectArea={selectArea}
+          onSelectLocation={onSelectLocation}
+          onStartDrag={startDrag}
+        />
+      ))}
 
       <Html
         position={[0, height + 0.6, 0]}
@@ -238,7 +375,7 @@ function Rack({
         >
           {area.code}
           <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.85 }}>
-            {area.levels} andares • {area.count} pts
+            {corr.length} corredores • {area.count} pts
           </div>
         </div>
       </Html>
@@ -266,7 +403,7 @@ function FocusRig({
       controls.target.set(x, y, z)
       controls.update()
     }
-  }, [token, controls])
+  }, [token, controls, target, camera])
 
   return null
 }
@@ -284,7 +421,7 @@ export default function WarehouseScene({
   const [live, setLive] = useState<Record<string, [number, number]>>({})
 
   const { items, floorsList, room, floorH } = useMemo(() => {
-    const maxHeight = Math.max(1, ...areas.map((a) => rackSize(a).height))
+    const maxHeight = Math.max(1, ...areas.map((a) => areaFootprint(a).height))
     const fh = maxHeight + FLOOR_GAP
     const floors = Array.from(new Set(areas.map((a) => a.floor))).sort(
       (a, b) => a - b
@@ -293,9 +430,9 @@ export default function WarehouseScene({
     const itemsList = areas.map((area, index) => {
       const sameFloor = areas.filter((a) => a.floor === area.floor)
       const idxInFloor = sameFloor.indexOf(area)
-      const sizes = sameFloor.map(rackSize)
-      const cellX = Math.max(2.5, ...sizes.map((s) => s.width)) + 2
-      const cellZ = Math.max(2.5, ...sizes.map((s) => s.depth)) + 2.5
+      const sizes = sameFloor.map(areaFootprint)
+      const cellX = Math.max(3, ...sizes.map((s) => s.width)) + 2.5
+      const cellZ = Math.max(3, ...sizes.map((s) => s.depth)) + 2.5
       const cols = Math.max(1, Math.ceil(Math.sqrt(sameFloor.length)))
       const rows = Math.ceil(sameFloor.length / cols)
       const col = idxInFloor % cols
@@ -314,22 +451,20 @@ export default function WarehouseScene({
     })
 
     const bound = Math.max(
-      14,
-      ...itemsList.map((i) => Math.max(Math.abs(i.x), Math.abs(i.z)) + 5)
+      16,
+      ...itemsList.map((i) => Math.max(Math.abs(i.x), Math.abs(i.z)) + 6)
     )
-    const totalHeight = floors.length * fh + 2
     return {
       items: itemsList,
       floorsList: floors,
       floorH: fh,
-      room: { width: bound * 2 + 4, depth: bound * 2 + 4, height: totalHeight }
+      room: {
+        width: bound * 2 + 4,
+        depth: bound * 2 + 4,
+        height: floors.length * fh + 2
+      }
     }
   }, [areas])
-
-  const resolveX = (id: string, baseX: number) =>
-    live[id] ? live[id][0] : baseX
-  const resolveZ = (id: string, baseZ: number) =>
-    live[id] ? live[id][1] : baseZ
 
   const draggedItem = items.find((i) => i.area.id === dragId)
 
@@ -342,16 +477,13 @@ export default function WarehouseScene({
     if (!item) {
       return null
     }
-    const { height } = rackSize(item.area)
+    const { height } = areaFootprint(item.area)
     return [item.x, item.platformY + height / 2, item.z]
   }, [focusToken, items])
 
   const handleDragMove = (event: ThreeEvent<PointerEvent>) => {
     if (dragId) {
-      setLive((prev) => ({
-        ...prev,
-        [dragId]: [event.point.x, event.point.z]
-      }))
+      setLive((prev) => ({ ...prev, [dragId]: [event.point.x, event.point.z] }))
     }
   }
 
@@ -369,8 +501,7 @@ export default function WarehouseScene({
       style={{ width: '100%', height: '100%' }}
     >
       <color attach="background" args={['#0b1120']} />
-      <fog attach="fog" args={['#0b1120', 30, 90]} />
-
+      <fog attach="fog" args={['#0b1120', 32, 95]} />
       <ambientLight intensity={0.6} />
       <hemisphereLight args={['#dbeafe', '#1e293b', 0.5]} />
       <directionalLight
@@ -452,10 +583,14 @@ export default function WarehouseScene({
       )}
 
       {items.map(({ area, color, x, z, platformY }) => (
-        <Rack
+        <AreaGroup
           key={area.id}
           area={area}
-          position={[resolveX(area.id, x), platformY, resolveZ(area.id, z)]}
+          position={[
+            live[area.id] ? live[area.id][0] : x,
+            platformY,
+            live[area.id] ? live[area.id][1] : z
+          ]}
           color={color}
           selected={selectedId === area.id}
           editable={editable}

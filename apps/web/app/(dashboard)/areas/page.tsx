@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  FiColumns,
   FiEdit2,
   FiGrid,
   FiMapPin,
@@ -20,6 +21,7 @@ import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { CodeLabel } from '@/components/CodeLabel'
+import { CorridorsModal } from './CorridorsModal'
 import type { Area, Paginated, Warehouse } from '@/lib/types'
 
 interface FormState {
@@ -58,6 +60,7 @@ export default function AreasPage() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [labelArea, setLabelArea] = useState<Area | null>(null)
+  const [corridorsArea, setCorridorsArea] = useState<Area | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
   const load = useCallback(async (target: number) => {
@@ -223,9 +226,16 @@ export default function AreasPage() {
             <>
               <Button
                 variant="ghost"
+                onClick={() => setCorridorsArea(a)}
+                title="Corredores"
+              >
+                <FiColumns />
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => generate(a)}
                 disabled={busy === a.id}
-                title="Gerar localizações (andares e pontos)"
+                title="Gerar localizações (corredores, andares e pontos)"
               >
                 <FiGrid />
               </Button>
@@ -379,6 +389,13 @@ export default function AreasPage() {
           />
         )}
       </Modal>
+
+      <CorridorsModal
+        area={corridorsArea}
+        canWrite={canWrite}
+        onClose={() => setCorridorsArea(null)}
+        onChanged={() => load(page)}
+      />
     </div>
   )
 }

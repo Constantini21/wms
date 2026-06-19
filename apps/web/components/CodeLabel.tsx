@@ -104,15 +104,26 @@ export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
         })}
       </div>
 
-      <div className="print-area flex flex-col items-center gap-3 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-100">
+      <div className="print-area flex h-[380px] w-72 flex-col items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-100">
         <p className="text-center text-sm font-semibold text-slate-800">
           {title}
         </p>
         {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
-        <div ref={qrWrapperRef} className={showQr ? '' : 'hidden'}>
+        <div
+          ref={qrWrapperRef}
+          className={`flex h-[160px] w-[160px] items-center justify-center ${
+            showQr ? '' : 'hidden'
+          }`}
+        >
           <QRCodeCanvas value={value} size={160} level="M" />
         </div>
-        <canvas ref={barcodeRef} className={showBarcode ? '' : 'hidden'} />
+        <div
+          className={`flex h-[80px] w-full items-center justify-center ${
+            showBarcode ? '' : 'hidden'
+          }`}
+        >
+          <canvas ref={barcodeRef} />
+        </div>
         <p className="font-mono text-xs text-slate-600">{value}</p>
       </div>
 

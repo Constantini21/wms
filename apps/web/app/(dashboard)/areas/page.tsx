@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { FiEdit2, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
+import { FiEdit2, FiGrid, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -19,13 +19,19 @@ interface FormState {
   name: string
   warehouseId: string
   barcode: string
+  aisles: string
+  levels: string
+  positionsPerLevel: string
 }
 
 const emptyForm: FormState = {
   code: '',
   name: '',
   warehouseId: '',
-  barcode: ''
+  barcode: '',
+  aisles: '1',
+  levels: '3',
+  positionsPerLevel: '6'
 }
 const PAGE_SIZE = 20
 
@@ -41,6 +47,7 @@ export default function AreasPage() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [labelArea, setLabelArea] = useState<Area | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
 
   const load = useCallback(async (target: number) => {
     const result = await apiRequest<Paginated<Area>>(
@@ -76,7 +83,10 @@ export default function AreasPage() {
       code: area.code,
       name: area.name,
       warehouseId: area.warehouseId,
-      barcode: area.barcode ?? ''
+      barcode: area.barcode ?? '',
+      aisles: area.aisles.toString(),
+      levels: area.levels.toString(),
+      positionsPerLevel: area.positionsPerLevel.toString()
     })
     setError(null)
     setModalOpen(true)
@@ -90,7 +100,10 @@ export default function AreasPage() {
         code: form.code,
         name: form.name,
         warehouseId: form.warehouseId,
-        barcode: form.barcode || undefined
+        barcode: form.barcode || undefined,
+        aisles: Number(form.aisles) || 1,
+        levels: Number(form.levels) || 1,
+        positionsPerLevel: Number(form.positionsPerLevel) || 1
       }
       if (editingId) {
         await apiRequest(`/areas/${editingId}`, { method: 'PATCH', body })
@@ -108,6 +121,26 @@ export default function AreasPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
+    }
+  }
+
+  const generate = async (area: Area) => {
+    const slots = area.aisles * area.levels * area.positionsPerLevel
+    if (
+      !window.confirm(
+        `Gerar ${slots} localizações para "${area.name}" (${area.aisles} corredores × ${area.levels} andares × ${area.positionsPerLevel} posições)? As localizações atuais desta área serão substituídas.`
+      )
+    ) {
+      return
+    }
+    setBusy(area.id)
+    try {
+      await apiRequest(`/areas/${area.id}/generate-locations`, {
+        method: 'POST'
+      })
+      await load(page)
+    } finally {
+      setBusy(null)
     }
   }
 
@@ -135,10 +168,18 @@ export default function AreasPage() {
       )
     },
     {
-      header: 'Cód. barras',
+      header: 'Estrutura',
       cell: (a) => (
         <span className="text-slate-500 dark:text-slate-400">
-          {a.barcode ?? '-'}
+          {a.aisles}c × {a.levels}a × {a.positionsPerLevel}p
+        </span>
+      )
+    },
+    {
+      header: 'Locais',
+      cell: (a) => (
+        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+          {a._count?.locations ?? 0}
         </span>
       )
     },
@@ -156,6 +197,14 @@ export default function AreasPage() {
           </Button>
           {canWrite && (
             <>
+              <Button
+                variant="ghost"
+                onClick={() => generate(a)}
+                disabled={busy === a.id}
+                title="Gerar localizações (andares e pontos)"
+              >
+                <FiGrid />
+              </Button>
               <Button variant="ghost" onClick={() => openEdit(a)}>
                 <FiEdit2 />
               </Button>
@@ -173,7 +222,7 @@ export default function AreasPage() {
     <div>
       <PageHeader
         title="Áreas"
-        description="Cadastro de áreas vinculadas aos galpões"
+        description="Áreas com estantes de vários andares e pontos por andar"
         action={
           canWrite && (
             <Button onClick={openCreate}>
@@ -229,14 +278,40 @@ export default function AreasPage() {
             onChange={(event) => setForm({ ...form, name: event.target.value })}
             required
           />
-          <Input
-            label="Código de barras / QR (opcional)"
-            value={form.barcode}
-            onChange={(event) =>
-              setForm({ ...form, barcode: event.target.value })
-            }
-            placeholder="Deixe em branco para usar o código"
-          />
+          <div className="grid grid-cols-3 gap-3">
+            <Input
+              label="Corredores"
+              type="number"
+              min="1"
+              value={form.aisles}
+              onChange={(event) =>
+                setForm({ ...form, aisles: event.target.value })
+              }
+            />
+            <Input
+              label="Andares"
+              type="number"
+              min="1"
+              value={form.levels}
+              onChange={(event) =>
+                setForm({ ...form, levels: event.target.value })
+              }
+            />
+            <Input
+              label="Pontos/andar"
+              type="number"
+              min="1"
+              value={form.positionsPerLevel}
+              onChange={(event) =>
+                setForm({ ...form, positionsPerLevel: event.target.value })
+              }
+            />
+          </div>
+          <p className="text-xs text-slate-400">
+            Após salvar, use o botão de grade na lista para gerar as
+            localizações (cada andar recebe acessibilidade automática: andares
+            baixos = acesso mais fácil).
+          </p>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button

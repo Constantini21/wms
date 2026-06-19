@@ -1,4 +1,11 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator'
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min
+} from 'class-validator'
 
 export class UpdateAreaDto {
   @IsOptional()
@@ -16,6 +23,24 @@ export class UpdateAreaDto {
   @IsOptional()
   @IsString()
   barcode?: string
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  aisles?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(30)
+  levels?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  positionsPerLevel?: number
 
   @IsOptional()
   @IsBoolean()

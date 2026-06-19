@@ -56,7 +56,10 @@ export default function WarehouseMapPage() {
           id: area.id,
           code: area.code,
           name: area.name,
-          count: countByArea(area.id)
+          count: countByArea(area.id),
+          aisles: area.aisles,
+          levels: area.levels,
+          positionsPerLevel: area.positionsPerLevel
         })),
     [areas, warehouseId, countByArea]
   )
@@ -81,7 +84,7 @@ export default function WarehouseMapPage() {
     <div>
       <PageHeader
         title="Mapa 3D do galpão"
-        description="Arraste para girar, role para dar zoom. A altura do bloco = nº de posições"
+        description="Arraste para girar, role para dar zoom. Cada estante mostra andares e pontos"
         action={
           <div className="w-full sm:w-56">
             <Select

@@ -45,6 +45,12 @@ export class AreasController {
   }
 
   @RequirePermissions(PERMISSIONS.AREAS_WRITE)
+  @Post(':id/generate-locations')
+  generateLocations(@Param('id') id: string) {
+    return this.areasService.generateLocations(id)
+  }
+
+  @RequirePermissions(PERMISSIONS.AREAS_WRITE)
   @Post()
   create(@Body() dto: CreateAreaDto) {
     return this.areasService.create(dto)

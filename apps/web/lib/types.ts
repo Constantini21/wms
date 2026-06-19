@@ -50,6 +50,9 @@ export interface Area {
   code: string
   name: string
   barcode: string | null
+  aisles: number
+  levels: number
+  positionsPerLevel: number
   active: boolean
   warehouseId: string
   warehouse?: { id: string; code: string; name: string }

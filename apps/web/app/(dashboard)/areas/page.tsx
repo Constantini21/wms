@@ -302,18 +302,21 @@ export default function AreasPage() {
           </Select>
           <Input
             label="Código"
+            info="Código curto e único da área dentro do galpão (ex.: A-01). Aparece nas etiquetas e endereços."
             value={form.code}
             onChange={(event) => setForm({ ...form, code: event.target.value })}
             required
           />
           <Input
             label="Nome"
+            info="Nome descritivo da área (ex.: Recebimento, Picking). Apenas para identificação."
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
             required
           />
           <Select
             label="Andar do galpão"
+            info="Em qual andar (piso) do prédio esta área fica. Definido pelo nº de andares do galpão."
             value={form.floor}
             onChange={(event) =>
               setForm({ ...form, floor: event.target.value })
@@ -329,33 +332,48 @@ export default function AreasPage() {
             ))}
           </Select>
           <div className="grid grid-cols-3 gap-3">
-            <Input
+            <Select
               label="Estantes"
-              type="number"
-              min="1"
+              info="Quantas estantes (prateleiras) esta área tem. Cada estante recebe um código (A1, B2...)."
               value={form.aisles}
               onChange={(event) =>
                 setForm({ ...form, aisles: event.target.value })
               }
-            />
-            <Input
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i + 1} value={String(i + 1)}>
+                  {i + 1}
+                </option>
+              ))}
+            </Select>
+            <Select
               label="Níveis"
-              type="number"
-              min="1"
+              info="Quantos níveis (andares da prateleira) cada estante tem. Níveis baixos = acesso mais fácil."
               value={form.levels}
               onChange={(event) =>
                 setForm({ ...form, levels: event.target.value })
               }
-            />
-            <Input
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i + 1} value={String(i + 1)}>
+                  {i + 1}
+                </option>
+              ))}
+            </Select>
+            <Select
               label="Pontos/nível"
-              type="number"
-              min="1"
+              info="Quantas posições (pontos) cada nível tem. Cada ponto é um endereço único de armazenagem."
               value={form.positionsPerLevel}
               onChange={(event) =>
                 setForm({ ...form, positionsPerLevel: event.target.value })
               }
-            />
+            >
+              {Array.from({ length: 30 }).map((_, i) => (
+                <option key={i + 1} value={String(i + 1)}>
+                  {i + 1}
+                </option>
+              ))}
+            </Select>
           </div>
           <p className="text-xs text-slate-400">
             Após salvar, use o botão de grade na lista para gerar as

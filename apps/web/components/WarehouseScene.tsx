@@ -166,7 +166,12 @@ function Rack({
         </mesh>
       )}
 
-      <Html position={[0, height + 0.6, 0]} center distanceFactor={14}>
+      <Html
+        position={[0, height + 0.6, 0]}
+        center
+        distanceFactor={14}
+        zIndexRange={[30, 0]}
+      >
         <div
           style={{
             padding: '3px 10px',

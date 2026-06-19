@@ -51,7 +51,22 @@ export class LocationsService {
   async findOne(id: string) {
     const location = await this.prisma.location.findUnique({
       where: { id },
-      include: locationInclude
+      include: {
+        area: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            warehouse: { select: { id: true, code: true, name: true } }
+          }
+        },
+        allocations: {
+          include: {
+            product: { select: { id: true, sku: true, name: true } }
+          },
+          orderBy: { quantity: 'desc' }
+        }
+      }
     })
     if (!location) {
       throw new NotFoundException('Location not found')

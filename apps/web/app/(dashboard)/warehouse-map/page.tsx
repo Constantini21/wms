@@ -43,6 +43,7 @@ export default function WarehouseMapPage() {
     title: string
     subtitle?: string
   } | null>(null)
+  const [detailLoc, setDetailLoc] = useState<Location | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -145,6 +146,16 @@ export default function WarehouseMapPage() {
       title: `Estante ${selectedAreaObj.code}`,
       subtitle: selectedAreaObj.name
     })
+  }
+
+  const openLocationDetail = async (loc: Location) => {
+    setDetailLoc(loc)
+    try {
+      const full = await apiRequest<Location>(`/locations/${loc.id}`)
+      setDetailLoc(full)
+    } catch {
+      // keep basic info
+    }
   }
 
   const openLocationLabel = (loc: Location) => {
@@ -277,8 +288,8 @@ export default function WarehouseMapPage() {
                       .map((loc) => (
                         <button
                           key={loc.id}
-                          onClick={() => openLocationLabel(loc)}
-                          title={`${loc.code} • acesso ${loc.accessibility} — ver etiqueta`}
+                          onClick={() => openLocationDetail(loc)}
+                          title={`${loc.code} • acesso ${loc.accessibility}`}
                           className="flex h-7 w-7 cursor-pointer items-center justify-center rounded bg-gradient-to-br from-blue-500 to-indigo-600 text-[9px] font-semibold text-white transition-transform hover:scale-110"
                         >
                           {loc.position ?? loc.code.slice(-2)}
@@ -290,6 +301,82 @@ export default function WarehouseMapPage() {
             </div>
           </div>
         )}
+
+        <Modal
+          open={detailLoc !== null}
+          title={`Endereço ${detailLoc?.code ?? ''}`}
+          onClose={() => setDetailLoc(null)}
+        >
+          {detailLoc && (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-2 text-sm text-slate-600 dark:text-slate-300">
+                <p>
+                  <span className="text-slate-400">Área:</span>{' '}
+                  {detailLoc.area?.name ?? selectedName ?? '-'}
+                </p>
+                <p>
+                  <span className="text-slate-400">Andar:</span>{' '}
+                  {detailLoc.floor ?? '-'}
+                </p>
+                <p>
+                  <span className="text-slate-400">Corredor:</span>{' '}
+                  {detailLoc.aisle ?? '-'}
+                </p>
+                <p>
+                  <span className="text-slate-400">Posição:</span>{' '}
+                  {detailLoc.position ?? '-'}
+                </p>
+                <p>
+                  <span className="text-slate-400">Acesso:</span>{' '}
+                  {detailLoc.accessibility}/10
+                </p>
+                <p>
+                  <span className="text-slate-400">Capacidade:</span>{' '}
+                  {detailLoc.capacity ?? 'ilimitada'}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Produtos neste endereço
+                </p>
+                {detailLoc.allocations && detailLoc.allocations.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {detailLoc.allocations.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
+                      >
+                        <span>
+                          <span className="font-medium">{a.product?.name}</span>
+                          <span className="text-slate-400">
+                            {' '}
+                            ({a.product?.sku})
+                          </span>
+                        </span>
+                        <span className="font-semibold">{a.quantity} un.</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    Endereço vazio (nenhum produto alocado).
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={() => {
+                  openLocationLabel(detailLoc)
+                  setDetailLoc(null)
+                }}
+                className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                <FiTag /> Exibir etiqueta
+              </button>
+            </div>
+          )}
+        </Modal>
 
         <Modal
           open={labelTarget !== null}

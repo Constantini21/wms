@@ -73,6 +73,11 @@ export interface Location {
   capacity: number | null
   active: boolean
   areaId: string
+  allocations?: {
+    id: string
+    quantity: number
+    product?: { id: string; sku: string; name: string }
+  }[]
   area?: {
     id: string
     code: string

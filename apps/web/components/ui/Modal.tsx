@@ -13,7 +13,7 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">

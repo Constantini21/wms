@@ -122,7 +122,7 @@ export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
             showBarcode ? '' : 'hidden'
           }`}
         >
-          <canvas ref={barcodeRef} />
+          <canvas ref={barcodeRef} className="max-h-full max-w-full" />
         </div>
         <p className="font-mono text-xs text-slate-600">{value}</p>
       </div>

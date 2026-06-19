@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import JsBarcode from 'jsbarcode'
 import { FiPrinter } from 'react-icons/fi'
+import { TbBarcode, TbQrcode, TbScan } from 'react-icons/tb'
 
 interface CodeLabelProps {
   value: string
@@ -11,12 +12,24 @@ interface CodeLabelProps {
   subtitle?: string
 }
 
+type Display = 'both' | 'qr' | 'barcode'
+
+const options: { id: Display; label: string; icon: typeof TbScan }[] = [
+  { id: 'both', label: 'Ambos', icon: TbScan },
+  { id: 'qr', label: 'QR Code', icon: TbQrcode },
+  { id: 'barcode', label: 'Cód. barras', icon: TbBarcode }
+]
+
 export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
   const barcodeRef = useRef<HTMLCanvasElement>(null)
   const qrWrapperRef = useRef<HTMLDivElement>(null)
+  const [display, setDisplay] = useState<Display>('both')
+
+  const showQr = display === 'both' || display === 'qr'
+  const showBarcode = display === 'both' || display === 'barcode'
 
   useEffect(() => {
-    if (barcodeRef.current && value) {
+    if (showBarcode && barcodeRef.current && value) {
       try {
         JsBarcode(barcodeRef.current, value, {
           format: 'CODE128',
@@ -29,12 +42,14 @@ export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
         // ignore invalid barcode values
       }
     }
-  }, [value])
+  }, [value, showBarcode])
 
   const handlePrint = () => {
     const qrCanvas = qrWrapperRef.current?.querySelector('canvas')
-    const qrData = qrCanvas?.toDataURL('image/png') ?? ''
-    const barcodeData = barcodeRef.current?.toDataURL('image/png') ?? ''
+    const qrData = showQr ? (qrCanvas?.toDataURL('image/png') ?? '') : ''
+    const barcodeData = showBarcode
+      ? (barcodeRef.current?.toDataURL('image/png') ?? '')
+      : ''
 
     const printWindow = window.open('', '_blank', 'width=480,height=640')
     if (!printWindow) {
@@ -55,8 +70,8 @@ export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
         <body>
           <h1>${title}</h1>
           ${subtitle ? `<p>${subtitle}</p>` : ''}
-          <img src="${qrData}" width="180" height="180" alt="QR" />
-          <img src="${barcodeData}" alt="Barcode" />
+          ${qrData ? `<img src="${qrData}" width="180" height="180" alt="QR" />` : ''}
+          ${barcodeData ? `<img src="${barcodeData}" alt="Barcode" />` : ''}
           <div class="code">${value}</div>
           <script>window.onload = function(){ window.print(); setTimeout(function(){ window.close() }, 300); }</script>
         </body>
@@ -67,17 +82,40 @@ export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
 
   return (
     <div className="flex flex-col items-center gap-4">
+      <div className="no-print inline-flex w-full max-w-xs rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+        {options.map((option) => {
+          const Icon = option.icon
+          const selected = display === option.id
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setDisplay(option.id)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all ${
+                selected
+                  ? 'bg-white text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              <Icon className="text-base" />
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="print-area flex flex-col items-center gap-3 rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-100">
         <p className="text-center text-sm font-semibold text-slate-800">
           {title}
         </p>
         {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
-        <div ref={qrWrapperRef}>
+        <div ref={qrWrapperRef} className={showQr ? '' : 'hidden'}>
           <QRCodeCanvas value={value} size={160} level="M" />
         </div>
-        <canvas ref={barcodeRef} />
+        <canvas ref={barcodeRef} className={showBarcode ? '' : 'hidden'} />
         <p className="font-mono text-xs text-slate-600">{value}</p>
       </div>
+
       <button
         onClick={handlePrint}
         className="no-print inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-800"

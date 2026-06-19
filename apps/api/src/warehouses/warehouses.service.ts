@@ -50,6 +50,7 @@ export class WarehousesService {
         code: dto.code,
         name: dto.name,
         address: dto.address,
+        floors: dto.floors ?? 1,
         active: dto.active ?? true
       }
     })

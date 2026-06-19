@@ -1,7 +1,8 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { FiEdit2, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
+import { useRouter } from 'next/navigation'
+import { FiEdit2, FiMapPin, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -42,6 +43,7 @@ const PAGE_SIZE = 20
 
 export default function LocationsPage() {
   const { hasPermission } = useAuth()
+  const router = useRouter()
   const canWrite = hasPermission(PERMISSIONS.LOCATIONS_WRITE)
   const [locations, setLocations] = useState<Location[]>([])
   const [page, setPage] = useState(1)
@@ -168,6 +170,17 @@ export default function LocationsPage() {
       align: 'right',
       cell: (l) => (
         <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            onClick={() =>
+              router.push(
+                `/warehouse-map?warehouse=${l.area?.warehouse?.id ?? ''}&area=${l.areaId}&location=${l.id}`
+              )
+            }
+            title="Ver no mapa 3D"
+          >
+            <FiMapPin />
+          </Button>
           <Button
             variant="ghost"
             onClick={() => setLabelLocation(l)}

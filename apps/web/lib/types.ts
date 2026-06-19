@@ -41,6 +41,7 @@ export interface Warehouse {
   code: string
   name: string
   address: string | null
+  floors: number
   active: boolean
   _count?: { areas: number }
 }
@@ -53,6 +54,7 @@ export interface Area {
   aisles: number
   levels: number
   positionsPerLevel: number
+  floor: number
   mapX?: number | null
   mapZ?: number | null
   active: boolean

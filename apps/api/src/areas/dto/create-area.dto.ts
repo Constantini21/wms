@@ -40,6 +40,12 @@ export class CreateAreaDto {
   positionsPerLevel?: number
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  floor?: number
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean
 }

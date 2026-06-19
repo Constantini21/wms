@@ -59,6 +59,7 @@ export class AreasService {
         aisles: dto.aisles ?? 1,
         levels: dto.levels ?? 1,
         positionsPerLevel: dto.positionsPerLevel ?? 1,
+        floor: dto.floor ?? 1,
         active: dto.active ?? true
       }
     })

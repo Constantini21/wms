@@ -44,6 +44,12 @@ export class UpdateAreaDto {
   positionsPerLevel?: number
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  floor?: number
+
+  @IsOptional()
   @IsNumber()
   mapX?: number
 

@@ -36,6 +36,8 @@ export default function WarehouseMapPage() {
   const [locations, setLocations] = useState<Location[]>([])
   const [warehouseId, setWarehouseId] = useState('')
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
+  const [focusToken, setFocusToken] = useState<string | undefined>(undefined)
+  const deepLinkApplied = useRef(false)
   const [editMode, setEditMode] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [labelTarget, setLabelTarget] = useState<{
@@ -70,6 +72,35 @@ export default function WarehouseMapPage() {
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
 
+  useEffect(() => {
+    if (deepLinkApplied.current || areas.length === 0) {
+      return
+    }
+    const params = new URLSearchParams(window.location.search)
+    const w = params.get('warehouse')
+    const a = params.get('area')
+    const locId = params.get('location')
+    deepLinkApplied.current = true
+    if (w) {
+      setWarehouseId(w)
+    } else if (a) {
+      const ar = areas.find((x) => x.id === a)
+      if (ar) {
+        setWarehouseId(ar.warehouseId)
+      }
+    }
+    if (a) {
+      setSelectedArea(a)
+      setFocusToken(`${a}::${Date.now()}`)
+    }
+    if (locId) {
+      const loc = locations.find((l) => l.id === locId)
+      if (loc) {
+        openLocationDetail(loc)
+      }
+    }
+  }, [areas, locations])
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen?.()
@@ -95,10 +126,30 @@ export default function WarehouseMapPage() {
           aisles: area.aisles,
           levels: area.levels,
           positionsPerLevel: area.positionsPerLevel,
+          floor: area.floor,
           mapX: area.mapX,
           mapZ: area.mapZ
         })),
     [areas, warehouseId, countByArea]
+  )
+
+  const locByKey = useMemo(() => {
+    const map = new Map<string, Location>()
+    for (const loc of locations) {
+      map.set(`${loc.areaId}|${loc.aisle}|${loc.floor}|${loc.position}`, loc)
+    }
+    return map
+  }, [locations])
+
+  const handleSelectLocation = useCallback(
+    (areaId: string, aisle: number, level: number, position: number) => {
+      const key = `${areaId}|${aisle}|${level}|${String(position).padStart(2, '0')}`
+      const loc = locByKey.get(key)
+      if (loc) {
+        openLocationDetail(loc)
+      }
+    },
+    [locByKey]
   )
 
   const onMove = useCallback(async (id: string, x: number, z: number) => {
@@ -182,8 +233,10 @@ export default function WarehouseMapPage() {
             areas={sceneAreas}
             selectedId={selectedArea}
             onSelect={setSelectedArea}
+            onSelectLocation={handleSelectLocation}
             editable={editMode}
             onMove={onMove}
+            focusToken={focusToken}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-slate-400">

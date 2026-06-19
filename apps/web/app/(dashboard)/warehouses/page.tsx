@@ -16,9 +16,10 @@ interface FormState {
   code: string
   name: string
   address: string
+  floors: string
 }
 
-const emptyForm: FormState = { code: '', name: '', address: '' }
+const emptyForm: FormState = { code: '', name: '', address: '', floors: '1' }
 const PAGE_SIZE = 20
 
 export default function WarehousesPage() {
@@ -57,7 +58,8 @@ export default function WarehousesPage() {
     setForm({
       code: warehouse.code,
       name: warehouse.name,
-      address: warehouse.address ?? ''
+      address: warehouse.address ?? '',
+      floors: warehouse.floors.toString()
     })
     setError(null)
     setModalOpen(true)
@@ -70,7 +72,8 @@ export default function WarehousesPage() {
       const body = {
         code: form.code,
         name: form.name,
-        address: form.address || undefined
+        address: form.address || undefined,
+        floors: Number(form.floors) || 1
       }
       if (editingId) {
         await apiRequest(`/warehouses/${editingId}`, { method: 'PATCH', body })
@@ -99,6 +102,14 @@ export default function WarehousesPage() {
       cell: (w) => <span className="font-medium">{w.code}</span>
     },
     { header: 'Nome', cell: (w) => w.name },
+    {
+      header: 'Andares',
+      cell: (w) => (
+        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+          {w.floors}
+        </span>
+      )
+    },
     {
       header: 'Endereço',
       cell: (w) => (
@@ -167,6 +178,15 @@ export default function WarehousesPage() {
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
             required
+          />
+          <Input
+            label="Andares do galpão"
+            type="number"
+            min="1"
+            value={form.floors}
+            onChange={(event) =>
+              setForm({ ...form, floors: event.target.value })
+            }
           />
           <Input
             label="Endereço"

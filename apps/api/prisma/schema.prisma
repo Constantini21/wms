@@ -58,6 +58,7 @@ model Warehouse {
   code      String   @unique
   name      String
   address   String?
+  floors    Int      @default(1) @map("floors")
   active    Boolean  @default(true)
   areas     Area[]
   createdAt DateTime @default(now()) @map("created_at")
@@ -74,6 +75,7 @@ model Area {
   aisles           Int        @default(1) @map("aisles")
   levels           Int        @default(1) @map("levels")
   positionsPerLevel Int       @default(1) @map("positions_per_level")
+  floor            Int        @default(1) @map("floor")
   mapX             Float?     @map("map_x")
   mapZ             Float?     @map("map_z")
   warehouseId      String     @map("warehouse_id")

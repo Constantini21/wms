@@ -1,7 +1,15 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { FiEdit2, FiGrid, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
+import { useRouter } from 'next/navigation'
+import {
+  FiEdit2,
+  FiGrid,
+  FiMapPin,
+  FiPlus,
+  FiPrinter,
+  FiTrash2
+} from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -22,6 +30,7 @@ interface FormState {
   aisles: string
   levels: string
   positionsPerLevel: string
+  floor: string
 }
 
 const emptyForm: FormState = {
@@ -31,12 +40,14 @@ const emptyForm: FormState = {
   barcode: '',
   aisles: '1',
   levels: '3',
-  positionsPerLevel: '6'
+  positionsPerLevel: '6',
+  floor: '1'
 }
 const PAGE_SIZE = 20
 
 export default function AreasPage() {
   const { hasPermission } = useAuth()
+  const router = useRouter()
   const canWrite = hasPermission(PERMISSIONS.AREAS_WRITE)
   const [areas, setAreas] = useState<Area[]>([])
   const [page, setPage] = useState(1)
@@ -86,7 +97,8 @@ export default function AreasPage() {
       barcode: area.barcode ?? '',
       aisles: area.aisles.toString(),
       levels: area.levels.toString(),
-      positionsPerLevel: area.positionsPerLevel.toString()
+      positionsPerLevel: area.positionsPerLevel.toString(),
+      floor: area.floor.toString()
     })
     setError(null)
     setModalOpen(true)
@@ -103,7 +115,8 @@ export default function AreasPage() {
         barcode: form.barcode || undefined,
         aisles: Number(form.aisles) || 1,
         levels: Number(form.levels) || 1,
-        positionsPerLevel: Number(form.positionsPerLevel) || 1
+        positionsPerLevel: Number(form.positionsPerLevel) || 1,
+        floor: Number(form.floor) || 1
       }
       if (editingId) {
         await apiRequest(`/areas/${editingId}`, { method: 'PATCH', body })
@@ -188,6 +201,17 @@ export default function AreasPage() {
       align: 'right',
       cell: (a) => (
         <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            onClick={() =>
+              router.push(
+                `/warehouse-map?warehouse=${a.warehouseId}&area=${a.id}`
+              )
+            }
+            title="Ver no mapa 3D"
+          >
+            <FiMapPin />
+          </Button>
           <Button
             variant="ghost"
             onClick={() => setLabelArea(a)}
@@ -278,6 +302,22 @@ export default function AreasPage() {
             onChange={(event) => setForm({ ...form, name: event.target.value })}
             required
           />
+          <Select
+            label="Andar do galpão"
+            value={form.floor}
+            onChange={(event) =>
+              setForm({ ...form, floor: event.target.value })
+            }
+          >
+            {Array.from({
+              length:
+                warehouses.find((w) => w.id === form.warehouseId)?.floors ?? 1
+            }).map((_, i) => (
+              <option key={i + 1} value={String(i + 1)}>
+                Andar {i + 1}
+              </option>
+            ))}
+          </Select>
           <div className="grid grid-cols-3 gap-3">
             <Input
               label="Corredores"

@@ -256,7 +256,7 @@ export default function WarehouseMapPage() {
         )}
 
         {/* top-left controls */}
-        <div className="pointer-events-none absolute left-3 top-3 flex flex-col gap-2">
+        <div className="pointer-events-none absolute left-3 top-3 z-50 flex flex-col gap-2">
           <select
             value={warehouseId}
             onChange={(event) => {
@@ -278,7 +278,7 @@ export default function WarehouseMapPage() {
         </div>
 
         {/* top-right controls */}
-        <div className="absolute right-3 top-3 flex gap-2">
+        <div className="absolute right-3 top-3 z-50 flex gap-2">
           {canEdit && (
             <button
               onClick={() => setEditMode((value) => !value)}
@@ -302,7 +302,7 @@ export default function WarehouseMapPage() {
         </div>
 
         {editMode && (
-          <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md bg-blue-600/90 px-3 py-1.5 text-xs font-medium text-white">
+          <div className="pointer-events-none absolute bottom-3 left-1/2 z-50 -translate-x-1/2 rounded-md bg-blue-600/90 px-3 py-1.5 text-xs font-medium text-white">
             Arraste as estantes para reposicioná-las — a posição é salva
             automaticamente
           </div>
@@ -310,7 +310,7 @@ export default function WarehouseMapPage() {
 
         {/* selected area overlay */}
         {selectedArea && (
-          <div className="absolute bottom-3 right-3 max-h-[55%] w-72 overflow-y-auto rounded-xl border border-white/10 bg-slate-900/85 p-4 text-slate-100 backdrop-blur">
+          <div className="scroll-slim absolute bottom-3 right-3 z-50 max-h-[55%] w-72 overflow-y-auto rounded-xl border border-white/10 bg-slate-900/85 p-4 text-slate-100 backdrop-blur">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <FiBox /> {selectedAreaObj?.code}

@@ -259,6 +259,7 @@ function Corridor({
         zIndexRange={[28, 0]}
       >
         <div
+          onClick={onSelectArea}
           style={{
             padding: '1px 6px',
             borderRadius: 5,
@@ -266,7 +267,8 @@ function Corridor({
             color: '#93c5fd',
             fontSize: 11,
             fontWeight: 700,
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            cursor: 'pointer'
           }}
         >
           {corridor.code}
@@ -361,6 +363,7 @@ function AreaGroup({
         zIndexRange={[30, 0]}
       >
         <div
+          onClick={selectArea}
           style={{
             padding: '3px 10px',
             borderRadius: 8,
@@ -370,6 +373,7 @@ function AreaGroup({
             fontWeight: 600,
             whiteSpace: 'nowrap',
             textAlign: 'center',
+            cursor: 'pointer',
             border: selected ? '1px solid #fff' : 'none'
           }}
         >

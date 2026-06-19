@@ -26,7 +26,8 @@ export interface SceneArea {
 interface WarehouseSceneProps {
   areas: SceneArea[]
   selectedId: string | null
-  onSelect: (id: string) => void
+  selectedCorridor?: string | null
+  onSelect: (id: string, corridorCode?: string) => void
   onSelectLocation?: (
     areaId: string,
     aisleCode: string,
@@ -146,7 +147,7 @@ interface CorridorProps {
   color: { base: string; shelf: string }
   selected: boolean
   editable: boolean
-  onSelectArea: () => void
+  onSelectCorridor: () => void
   onSelectLocation?: (
     areaId: string,
     aisleCode: string,
@@ -163,7 +164,7 @@ function Corridor({
   color,
   selected,
   editable,
-  onSelectArea,
+  onSelectCorridor,
   onSelectLocation,
   onStartDrag
 }: CorridorProps) {
@@ -183,14 +184,14 @@ function Corridor({
     onPointerDown: (e: ThreeEvent<PointerEvent>) => {
       if (editable) {
         e.stopPropagation()
-        onSelectArea()
+        onSelectCorridor()
         onStartDrag()
       }
     },
     onClick: (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation()
       if (!editable) {
-        onSelectArea()
+        onSelectCorridor()
       }
     }
   }
@@ -245,7 +246,7 @@ function Corridor({
               onClick={() =>
                 onSelectLocation?.(areaId, corridor.code, l + 1, p + 1)
               }
-              onAreaSelect={onSelectArea}
+              onAreaSelect={onSelectCorridor}
               onStartDrag={onStartDrag}
             />
           )
@@ -259,7 +260,7 @@ function Corridor({
         zIndexRange={[28, 0]}
       >
         <div
-          onClick={onSelectArea}
+          onClick={onSelectCorridor}
           style={{
             padding: '1px 6px',
             borderRadius: 5,
@@ -283,8 +284,9 @@ interface AreaGroupProps {
   position: [number, number, number]
   color: { base: string; shelf: string }
   selected: boolean
+  selectedCorridor?: string | null
   editable: boolean
-  onSelect: (id: string) => void
+  onSelect: (id: string, corridorCode?: string) => void
   onSelectLocation?: (
     areaId: string,
     aisleCode: string,
@@ -299,6 +301,7 @@ function AreaGroup({
   position,
   color,
   selected,
+  selectedCorridor,
   editable,
   onSelect,
   onSelectLocation,
@@ -348,9 +351,11 @@ function AreaGroup({
           corridor={c}
           z={-depth / 2 + (ci + 0.5) * (CORR_D + AISLE_GAP)}
           color={color}
-          selected={selected}
+          selected={
+            selected && (!selectedCorridor || selectedCorridor === c.code)
+          }
           editable={editable}
-          onSelectArea={selectArea}
+          onSelectCorridor={() => onSelect(area.id, c.code)}
           onSelectLocation={onSelectLocation}
           onStartDrag={startDrag}
         />
@@ -415,6 +420,7 @@ function FocusRig({
 export default function WarehouseScene({
   areas,
   selectedId,
+  selectedCorridor,
   onSelect,
   onSelectLocation,
   editable = false,
@@ -597,6 +603,7 @@ export default function WarehouseScene({
           ]}
           color={color}
           selected={selectedId === area.id}
+          selectedCorridor={selectedCorridor}
           editable={editable}
           onSelect={onSelect}
           onSelectLocation={onSelectLocation}

@@ -105,7 +105,7 @@ export function CorridorsModal({
                   {c.code}
                 </span>
                 <span className="ml-2 text-slate-500 dark:text-slate-400">
-                  {c.levels} andares × {c.positionsPerLevel} pontos •{' '}
+                  {c.levels} níveis × {c.positionsPerLevel} pontos •{' '}
                   {c._count?.locations ?? 0} locais
                 </span>
               </div>
@@ -143,7 +143,7 @@ export function CorridorsModal({
                 required
               />
               <Input
-                label="Andares"
+                label="Níveis"
                 type="number"
                 min="1"
                 value={levels}

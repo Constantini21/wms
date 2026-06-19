@@ -52,7 +52,7 @@ export default function ScannerPage() {
           { label: 'Código', value: loc.code },
           { label: 'Área', value: loc.area?.name ?? '-' },
           { label: 'Corredor', value: loc.aisle ?? '-' },
-          { label: 'Andar', value: loc.floor ?? '-' },
+          { label: 'Nível', value: loc.floor ?? '-' },
           { label: 'Posição', value: loc.position ?? '-' }
         ]
       })

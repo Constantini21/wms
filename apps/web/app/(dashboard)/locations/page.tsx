@@ -155,7 +155,7 @@ export default function LocationsPage() {
       )
     },
     { header: 'Corredor', cell: (l) => l.aisle ?? '-' },
-    { header: 'Andar', cell: (l) => l.floor ?? '-' },
+    { header: 'Nível', cell: (l) => l.floor ?? '-' },
     { header: 'Posição', cell: (l) => l.position ?? '-' },
     {
       header: 'Acesso',
@@ -207,7 +207,7 @@ export default function LocationsPage() {
     <div>
       <PageHeader
         title="Localizações"
-        description="Posições de estoque: corredor, andar e posição dentro de cada área"
+        description="Posições de estoque: corredor, nível e posição dentro de cada área"
         action={
           canWrite && (
             <Button onClick={openCreate}>
@@ -273,7 +273,7 @@ export default function LocationsPage() {
               }
             />
             <Input
-              label="Andar"
+              label="Nível"
               value={form.floor}
               onChange={(event) =>
                 setForm({ ...form, floor: event.target.value })
@@ -333,7 +333,7 @@ export default function LocationsPage() {
           <CodeLabel
             value={labelLocation.barcode || labelLocation.code}
             title={labelLocation.name || labelLocation.code}
-            subtitle={`Área: ${labelLocation.area?.name ?? '-'} • Corredor ${labelLocation.aisle ?? '-'} / Andar ${labelLocation.floor ?? '-'} / Pos ${labelLocation.position ?? '-'}`}
+            subtitle={`Área: ${labelLocation.area?.name ?? '-'} • Corredor ${labelLocation.aisle ?? '-'} / Nível ${labelLocation.floor ?? '-'} / Pos ${labelLocation.position ?? '-'}`}
           />
         )}
       </Modal>

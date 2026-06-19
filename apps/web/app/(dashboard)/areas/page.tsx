@@ -144,7 +144,7 @@ export default function AreasPage() {
     const slots = area.aisles * area.levels * area.positionsPerLevel
     if (
       !window.confirm(
-        `Gerar ${slots} localizações para "${area.name}" (${area.aisles} corredores × ${area.levels} andares × ${area.positionsPerLevel} posições)? As localizações atuais desta área serão substituídas.`
+        `Gerar ${slots} localizações para "${area.name}" (${area.aisles} corredores × ${area.levels} níveis × ${area.positionsPerLevel} posições)? As localizações atuais desta área serão substituídas.`
       )
     ) {
       return
@@ -187,7 +187,7 @@ export default function AreasPage() {
       header: 'Estrutura',
       cell: (a) => (
         <span className="text-slate-500 dark:text-slate-400">
-          {a.aisles}c × {a.levels}a × {a.positionsPerLevel}p
+          {a.aisles} corr × {a.levels} nív × {a.positionsPerLevel} pts
         </span>
       )
     },
@@ -235,7 +235,7 @@ export default function AreasPage() {
                 variant="ghost"
                 onClick={() => generate(a)}
                 disabled={busy === a.id}
-                title="Gerar localizações (corredores, andares e pontos)"
+                title="Gerar localizações (corredores, níveis e pontos)"
               >
                 <FiGrid />
               </Button>
@@ -256,7 +256,7 @@ export default function AreasPage() {
     <div>
       <PageHeader
         title="Áreas"
-        description="Áreas com estantes de vários andares e pontos por andar"
+        description="Áreas com estantes de vários níveis e pontos por corredor"
         action={
           canWrite && (
             <Button onClick={openCreate}>
@@ -339,7 +339,7 @@ export default function AreasPage() {
               }
             />
             <Input
-              label="Andares"
+              label="Níveis"
               type="number"
               min="1"
               value={form.levels}
@@ -348,7 +348,7 @@ export default function AreasPage() {
               }
             />
             <Input
-              label="Pontos/andar"
+              label="Pontos/nível"
               type="number"
               min="1"
               value={form.positionsPerLevel}
@@ -359,7 +359,7 @@ export default function AreasPage() {
           </div>
           <p className="text-xs text-slate-400">
             Após salvar, use o botão de grade na lista para gerar as
-            localizações (cada andar recebe acessibilidade automática: andares
+            localizações (cada nível recebe acessibilidade automática: níveis
             baixos = acesso mais fácil).
           </p>
           {error && <p className="text-sm text-red-600">{error}</p>}

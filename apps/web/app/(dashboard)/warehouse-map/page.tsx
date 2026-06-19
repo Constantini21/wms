@@ -36,6 +36,7 @@ export default function WarehouseMapPage() {
   const [locations, setLocations] = useState<Location[]>([])
   const [warehouseId, setWarehouseId] = useState('')
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
+  const [selectedCorridor, setSelectedCorridor] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState<string | undefined>(undefined)
   const deepLinkApplied = useRef(false)
   const [editMode, setEditMode] = useState(false)
@@ -180,17 +181,35 @@ export default function WarehouseMapPage() {
   }, [])
 
   const areaLocations = useMemo(
-    () => locations.filter((loc) => loc.areaId === selectedArea),
-    [locations, selectedArea]
+    () =>
+      locations.filter(
+        (loc) =>
+          loc.areaId === selectedArea &&
+          (!selectedCorridor || loc.aisle === selectedCorridor)
+      ),
+    [locations, selectedArea, selectedCorridor]
   )
 
-  const floors = useMemo(() => {
-    const groups = new Map<string, Location[]>()
+  // group: corridor -> level -> locations
+  const corridorGroups = useMemo(() => {
+    const byCorridor = new Map<string, Map<string, Location[]>>()
     for (const loc of areaLocations) {
-      const key = loc.floor ?? 'Térreo'
-      groups.set(key, [...(groups.get(key) ?? []), loc])
+      const corr = loc.aisle ?? '-'
+      const level = loc.floor ?? '-'
+      if (!byCorridor.has(corr)) {
+        byCorridor.set(corr, new Map())
+      }
+      const levels = byCorridor.get(corr)!
+      levels.set(level, [...(levels.get(level) ?? []), loc])
     }
-    return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]))
+    return Array.from(byCorridor.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([corr, levels]) => ({
+        corridor: corr,
+        levels: Array.from(levels.entries()).sort((a, b) =>
+          b[0].localeCompare(a[0])
+        )
+      }))
   }, [areaLocations])
 
   const selectedAreaObj = useMemo(
@@ -199,13 +218,18 @@ export default function WarehouseMapPage() {
   )
   const selectedName = selectedAreaObj?.name
 
+  const handleSelect = useCallback((areaId: string, corridorCode?: string) => {
+    setSelectedArea(areaId)
+    setSelectedCorridor(corridorCode ?? null)
+  }, [])
+
   const openAreaLabel = () => {
     if (!selectedAreaObj) {
       return
     }
     setLabelTarget({
       value: selectedAreaObj.barcode || selectedAreaObj.code,
-      title: `Estante ${selectedAreaObj.code}`,
+      title: `Área ${selectedAreaObj.code}`,
       subtitle: selectedAreaObj.name
     })
   }
@@ -224,7 +248,7 @@ export default function WarehouseMapPage() {
     setLabelTarget({
       value: loc.barcode || loc.code,
       title: loc.code,
-      subtitle: `${selectedName ?? ''} • Andar ${loc.floor ?? '-'} / Pos ${loc.position ?? '-'}`
+      subtitle: `${selectedName ?? ''} • Corredor ${loc.aisle ?? '-'} • Nível ${loc.floor ?? '-'} / Pos ${loc.position ?? '-'}`
     })
   }
 
@@ -243,7 +267,8 @@ export default function WarehouseMapPage() {
           <WarehouseScene
             areas={sceneAreas}
             selectedId={selectedArea}
-            onSelect={setSelectedArea}
+            selectedCorridor={selectedCorridor}
+            onSelect={handleSelect}
             onSelectLocation={handleSelectLocation}
             editable={editMode}
             onMove={onMove}
@@ -319,46 +344,75 @@ export default function WarehouseMapPage() {
                 </span>
               </h3>
               <button
-                onClick={() => setSelectedArea(null)}
+                onClick={() => {
+                  setSelectedArea(null)
+                  setSelectedCorridor(null)
+                }}
                 className="cursor-pointer text-slate-400 hover:text-white"
                 aria-label="Fechar"
               >
                 <FiX />
               </button>
             </div>
+            <p className="mb-2 text-xs text-slate-400">
+              Andar {selectedAreaObj?.floor ?? 1} do galpão
+              {selectedCorridor ? (
+                <>
+                  {' • '}
+                  <span className="font-semibold text-blue-300">
+                    Corredor {selectedCorridor}
+                  </span>{' '}
+                  <button
+                    onClick={() => setSelectedCorridor(null)}
+                    className="cursor-pointer underline hover:text-white"
+                  >
+                    (ver todos)
+                  </button>
+                </>
+              ) : null}
+            </p>
             <button
               onClick={openAreaLabel}
               className="mb-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
             >
-              <FiTag /> Etiqueta da estante
+              <FiTag /> Etiqueta da área
             </button>
-            {floors.length === 0 && (
+            {corridorGroups.length === 0 && (
               <p className="text-xs text-slate-400">
-                Nenhuma localização nesta área.
+                Nenhuma localização nesta seleção.
               </p>
             )}
-            <div className="flex flex-col gap-2">
-              {floors.map(([floor, locs]) => (
-                <div key={floor} className="rounded-lg bg-slate-800/60 p-2">
-                  <p className="mb-1 text-xs font-medium text-slate-200">
-                    Andar {floor} • {locs.length} pts
+            <div className="flex flex-col gap-3">
+              {corridorGroups.map((group) => (
+                <div key={group.corridor}>
+                  <p className="mb-1 flex items-center gap-1 text-xs font-bold text-blue-300">
+                    Corredor {group.corridor}
                   </p>
-                  <div className="flex flex-wrap gap-1">
-                    {locs
-                      .slice()
-                      .sort((a, b) =>
-                        (a.position ?? '').localeCompare(b.position ?? '')
-                      )
-                      .map((loc) => (
-                        <button
-                          key={loc.id}
-                          onClick={() => openLocationDetail(loc)}
-                          title={`${loc.code} • acesso ${loc.accessibility}`}
-                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded bg-gradient-to-br from-blue-500 to-indigo-600 text-[9px] font-semibold text-white transition-transform hover:scale-110"
-                        >
-                          {loc.position ?? loc.code.slice(-2)}
-                        </button>
-                      ))}
+                  <div className="flex flex-col gap-1.5 border-l border-slate-700 pl-2">
+                    {group.levels.map(([level, locs]) => (
+                      <div key={level}>
+                        <p className="mb-1 text-[11px] font-medium text-slate-300">
+                          Nível {level} • {locs.length} pts
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {locs
+                            .slice()
+                            .sort((a, b) =>
+                              (a.position ?? '').localeCompare(b.position ?? '')
+                            )
+                            .map((loc) => (
+                              <button
+                                key={loc.id}
+                                onClick={() => openLocationDetail(loc)}
+                                title={`${loc.code} • acesso ${loc.accessibility}`}
+                                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded bg-gradient-to-br from-blue-500 to-indigo-600 text-[9px] font-semibold text-white transition-transform hover:scale-110"
+                              >
+                                {loc.position ?? loc.code.slice(-2)}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -375,16 +429,24 @@ export default function WarehouseMapPage() {
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <p>
+                  <span className="text-slate-400">Galpão:</span>{' '}
+                  {detailLoc.area?.warehouse?.name ?? '-'}
+                </p>
+                <p>
+                  <span className="text-slate-400">Andar (galpão):</span>{' '}
+                  {detailLoc.area?.floor ?? selectedAreaObj?.floor ?? 1}
+                </p>
+                <p>
                   <span className="text-slate-400">Área:</span>{' '}
                   {detailLoc.area?.name ?? selectedName ?? '-'}
                 </p>
                 <p>
-                  <span className="text-slate-400">Andar:</span>{' '}
-                  {detailLoc.floor ?? '-'}
-                </p>
-                <p>
                   <span className="text-slate-400">Corredor:</span>{' '}
                   {detailLoc.aisle ?? '-'}
+                </p>
+                <p>
+                  <span className="text-slate-400">Nível:</span>{' '}
+                  {detailLoc.floor ?? '-'}
                 </p>
                 <p>
                   <span className="text-slate-400">Posição:</span>{' '}

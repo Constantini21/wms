@@ -96,6 +96,7 @@ export interface Location {
     id: string
     code: string
     name: string
+    floor?: number
     warehouse?: { id: string; code: string; name: string }
   }
 }

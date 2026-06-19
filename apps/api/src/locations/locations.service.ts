@@ -57,6 +57,7 @@ export class LocationsService {
             id: true,
             code: true,
             name: true,
+            floor: true,
             warehouse: { select: { id: true, code: true, name: true } }
           }
         },

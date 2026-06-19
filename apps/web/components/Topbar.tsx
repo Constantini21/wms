@@ -15,7 +15,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
     <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 lg:px-6">
       <button
         onClick={onToggleSidebar}
-        className="text-2xl text-slate-600 dark:text-slate-300 lg:hidden"
+        className="cursor-pointer text-2xl text-slate-600 dark:text-slate-300 lg:hidden"
         aria-label="Abrir menu"
       >
         ☰

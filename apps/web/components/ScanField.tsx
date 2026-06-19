@@ -42,7 +42,7 @@ export function ScanField({
           type="button"
           onClick={() => setOpen(true)}
           title="Escanear código"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-slate-200 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-200 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
         >
           <FiCamera /> Escanear
         </button>

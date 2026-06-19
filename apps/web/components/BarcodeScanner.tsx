@@ -136,7 +136,7 @@ export function BarcodeScanner({ onResult }: BarcodeScannerProps) {
               key={item.id}
               type="button"
               onClick={() => handleModeChange(item.id)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all sm:text-sm ${
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all sm:text-sm ${
                 selected
                   ? 'bg-white text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -163,14 +163,14 @@ export function BarcodeScanner({ onResult }: BarcodeScannerProps) {
       {!active ? (
         <button
           onClick={() => start(mode)}
-          className="inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          className="inline-flex w-full max-w-sm cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
         >
           <FiCamera /> Iniciar leitura
         </button>
       ) : (
         <button
           onClick={stop}
-          className="inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
+          className="inline-flex w-full max-w-sm cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
         >
           <FiSquare /> Parar leitura
         </button>

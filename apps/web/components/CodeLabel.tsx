@@ -91,7 +91,7 @@ export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
               key={option.id}
               type="button"
               onClick={() => setDisplay(option.id)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all ${
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all ${
                 selected
                   ? 'bg-white text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -129,7 +129,7 @@ export function CodeLabel({ value, title, subtitle }: CodeLabelProps) {
 
       <button
         onClick={handlePrint}
-        className="no-print inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-800"
+        className="no-print inline-flex cursor-pointer items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-800"
       >
         <FiPrinter /> Imprimir etiqueta
       </button>

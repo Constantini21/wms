@@ -137,7 +137,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
           <button
             onClick={toggleCollapsed}
-            className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-800 hover:text-white lg:flex"
+            className="hidden h-8 w-8 cursor-pointer items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-800 hover:text-white lg:flex"
             aria-label="Recolher menu"
             title={collapsed ? 'Expandir menu' : 'Recolher menu'}
           >

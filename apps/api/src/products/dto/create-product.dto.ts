@@ -1,51 +1,43 @@
 import {
   IsBoolean,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
   Min
 } from 'class-validator'
 
-export class UpdateLocationDto {
-  @IsOptional()
+export class CreateProductDto {
   @IsString()
-  code?: string
+  sku: string
+
+  @IsString()
+  name: string
 
   @IsOptional()
   @IsString()
-  areaId?: string
+  description?: string
 
   @IsOptional()
   @IsString()
-  name?: string
+  barcode?: string
 
   @IsOptional()
-  @IsString()
-  aisle?: string
-
-  @IsOptional()
-  @IsString()
-  floor?: string
-
-  @IsOptional()
-  @IsString()
-  position?: string
+  @IsNumber()
+  @Min(0)
+  weight?: number
 
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(10)
-  accessibility?: number
+  turnoverScore?: number
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  capacity?: number
-
-  @IsOptional()
-  @IsString()
-  barcode?: string
+  quantity?: number
 
   @IsOptional()
   @IsBoolean()

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
+import { RangeField } from '@/components/ui/RangeField'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { CodeLabel } from '@/components/CodeLabel'
 import type { Area, Location, Paginated } from '@/lib/types'
@@ -22,6 +23,8 @@ interface FormState {
   floor: string
   position: string
   barcode: string
+  accessibility: number
+  capacity: string
 }
 
 const emptyForm: FormState = {
@@ -31,7 +34,9 @@ const emptyForm: FormState = {
   aisle: '',
   floor: '',
   position: '',
-  barcode: ''
+  barcode: '',
+  accessibility: 5,
+  capacity: ''
 }
 const PAGE_SIZE = 20
 
@@ -83,7 +88,9 @@ export default function LocationsPage() {
       aisle: location.aisle ?? '',
       floor: location.floor ?? '',
       position: location.position ?? '',
-      barcode: location.barcode ?? ''
+      barcode: location.barcode ?? '',
+      accessibility: location.accessibility ?? 5,
+      capacity: location.capacity?.toString() ?? ''
     })
     setError(null)
     setModalOpen(true)
@@ -100,7 +107,9 @@ export default function LocationsPage() {
         aisle: form.aisle || undefined,
         floor: form.floor || undefined,
         position: form.position || undefined,
-        barcode: form.barcode || undefined
+        barcode: form.barcode || undefined,
+        accessibility: form.accessibility,
+        capacity: form.capacity ? Number(form.capacity) : undefined
       }
       if (editingId) {
         await apiRequest(`/locations/${editingId}`, { method: 'PATCH', body })
@@ -146,6 +155,14 @@ export default function LocationsPage() {
     { header: 'Corredor', cell: (l) => l.aisle ?? '-' },
     { header: 'Andar', cell: (l) => l.floor ?? '-' },
     { header: 'Posição', cell: (l) => l.position ?? '-' },
+    {
+      header: 'Acesso',
+      cell: (l) => (
+        <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+          {l.accessibility}/10
+        </span>
+      )
+    },
     {
       header: '',
       align: 'right',
@@ -257,6 +274,21 @@ export default function LocationsPage() {
               }
             />
           </div>
+          <RangeField
+            label="Facilidade de acesso"
+            value={form.accessibility}
+            onChange={(value) => setForm({ ...form, accessibility: value })}
+            hint="0 = difícil acesso (alto/fundo), 10 = fácil acesso (frente/altura ideal)"
+          />
+          <Input
+            label="Capacidade (unidades, opcional)"
+            type="number"
+            value={form.capacity}
+            onChange={(event) =>
+              setForm({ ...form, capacity: event.target.value })
+            }
+            placeholder="Vazio = ilimitado"
+          />
           <Input
             label="Código de barras / QR (opcional)"
             value={form.barcode}

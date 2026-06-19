@@ -79,6 +79,8 @@ export class LocationsService {
         aisle: dto.aisle,
         floor: dto.floor,
         position: dto.position,
+        accessibility: dto.accessibility ?? 5,
+        capacity: dto.capacity,
         barcode: dto.barcode,
         active: dto.active ?? true
       }

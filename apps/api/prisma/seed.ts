@@ -13,7 +13,9 @@ const PERMISSIONS = {
   AREAS_READ: 'areas.read',
   AREAS_WRITE: 'areas.write',
   LOCATIONS_READ: 'locations.read',
-  LOCATIONS_WRITE: 'locations.write'
+  LOCATIONS_WRITE: 'locations.write',
+  PRODUCTS_READ: 'products.read',
+  PRODUCTS_WRITE: 'products.write'
 } as const
 
 const ALL_PERMISSIONS: { key: string; description: string }[] = [
@@ -26,7 +28,9 @@ const ALL_PERMISSIONS: { key: string; description: string }[] = [
   { key: PERMISSIONS.AREAS_READ, description: 'View areas' },
   { key: PERMISSIONS.AREAS_WRITE, description: 'Manage areas' },
   { key: PERMISSIONS.LOCATIONS_READ, description: 'View locations' },
-  { key: PERMISSIONS.LOCATIONS_WRITE, description: 'Manage locations' }
+  { key: PERMISSIONS.LOCATIONS_WRITE, description: 'Manage locations' },
+  { key: PERMISSIONS.PRODUCTS_READ, description: 'View products' },
+  { key: PERMISSIONS.PRODUCTS_WRITE, description: 'Manage products' }
 ]
 
 async function main() {
@@ -44,7 +48,9 @@ async function main() {
     PERMISSIONS.AREAS_READ,
     PERMISSIONS.AREAS_WRITE,
     PERMISSIONS.LOCATIONS_READ,
-    PERMISSIONS.LOCATIONS_WRITE
+    PERMISSIONS.LOCATIONS_WRITE,
+    PERMISSIONS.PRODUCTS_READ,
+    PERMISSIONS.PRODUCTS_WRITE
   ]
 
   const adminRole = await prisma.role.upsert({

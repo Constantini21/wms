@@ -1,4 +1,11 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator'
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min
+} from 'class-validator'
 
 export class CreateLocationDto {
   @IsString()
@@ -22,6 +29,17 @@ export class CreateLocationDto {
   @IsOptional()
   @IsString()
   position?: string
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  accessibility?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  capacity?: number
 
   @IsOptional()
   @IsString()

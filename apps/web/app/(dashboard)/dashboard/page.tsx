@@ -2,12 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import { IconType } from 'react-icons'
-import { FiGrid, FiLayers, FiMapPin, FiUser } from 'react-icons/fi'
+import {
+  FiGrid,
+  FiLayers,
+  FiMapPin,
+  FiPackage,
+  FiTrendingUp,
+  FiUser
+} from 'react-icons/fi'
 import { useAuth } from '@/lib/auth'
 import { apiRequest } from '@/lib/api'
 import { PERMISSIONS } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
-import type { Area, Location, Paginated, Warehouse } from '@/lib/types'
+import type {
+  Area,
+  Location,
+  Paginated,
+  PlacementSuggestion,
+  Product,
+  Warehouse
+} from '@/lib/types'
 
 interface StatCard {
   label: string
@@ -52,6 +66,26 @@ export default function DashboardPage() {
           value: locations.total,
           icon: FiMapPin,
           color: 'from-emerald-500 to-emerald-600'
+        })
+      }
+      if (hasPermission(PERMISSIONS.PRODUCTS_READ)) {
+        const products = await apiRequest<Paginated<Product>>(
+          '/products?pageSize=1'
+        )
+        cards.push({
+          label: 'Produtos',
+          value: products.total,
+          icon: FiPackage,
+          color: 'from-violet-500 to-violet-600'
+        })
+        const suggestions = await apiRequest<Paginated<PlacementSuggestion>>(
+          '/suggestions?status=pending&pageSize=1'
+        )
+        cards.push({
+          label: 'Sugestões pendentes',
+          value: suggestions.total,
+          icon: FiTrendingUp,
+          color: 'from-amber-500 to-amber-600'
         })
       }
       cards.push({

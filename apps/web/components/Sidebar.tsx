@@ -12,7 +12,9 @@ import {
   FiLayers,
   FiMapPin,
   FiMaximize,
+  FiPackage,
   FiShield,
+  FiTrendingUp,
   FiUsers
 } from 'react-icons/fi'
 import { TbQrcode } from 'react-icons/tb'
@@ -46,6 +48,18 @@ const navItems: NavItem[] = [
     label: 'Localizações',
     icon: FiMapPin,
     permission: PERMISSIONS.LOCATIONS_READ
+  },
+  {
+    href: '/products',
+    label: 'Produtos',
+    icon: FiPackage,
+    permission: PERMISSIONS.PRODUCTS_READ
+  },
+  {
+    href: '/suggestions',
+    label: 'Sugestões',
+    icon: FiTrendingUp,
+    permission: PERMISSIONS.PRODUCTS_READ
   },
   {
     href: '/scanner',

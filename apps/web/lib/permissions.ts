@@ -8,5 +8,7 @@ export const PERMISSIONS = {
   AREAS_READ: 'areas.read',
   AREAS_WRITE: 'areas.write',
   LOCATIONS_READ: 'locations.read',
-  LOCATIONS_WRITE: 'locations.write'
+  LOCATIONS_WRITE: 'locations.write',
+  PRODUCTS_READ: 'products.read',
+  PRODUCTS_WRITE: 'products.write'
 } as const

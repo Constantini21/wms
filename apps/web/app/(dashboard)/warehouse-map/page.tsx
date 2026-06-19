@@ -92,7 +92,7 @@ export default function WarehouseMapPage() {
     }
     if (a) {
       setSelectedArea(a)
-      setFocusToken(`${a}::${Date.now()}`)
+      setFocusToken(`area::${a}::${Date.now()}`)
     }
     if (locId) {
       const loc = locations.find((l) => l.id === locId)
@@ -132,12 +132,18 @@ export default function WarehouseMapPage() {
               ? area.corridors.map((c) => ({
                   id: c.id,
                   code: c.code,
+                  label: c.label,
+                  corridorFront: c.corridorFront,
+                  corridorBack: c.corridorBack,
                   levels: c.levels,
                   positionsPerLevel: c.positionsPerLevel
                 }))
               : Array.from({ length: area.aisles }).map((_, i) => ({
                   id: `${area.id}-${i}`,
                   code: `${String.fromCharCode(65 + (i % 26))}${i + 1}`,
+                  label: `${String.fromCharCode(65 + (i % 26))}${i + 1}`,
+                  corridorFront: `C${i + 1}`,
+                  corridorBack: `C${i + 2}`,
                   levels: area.levels,
                   positionsPerLevel: area.positionsPerLevel
                 }))
@@ -248,7 +254,7 @@ export default function WarehouseMapPage() {
     setLabelTarget({
       value: loc.barcode || loc.code,
       title: loc.code,
-      subtitle: `${selectedName ?? ''} • Corredor ${loc.aisle ?? '-'} • Nível ${loc.floor ?? '-'} / Pos ${loc.position ?? '-'}`
+      subtitle: `${selectedName ?? ''} • Estante ${loc.aisle ?? '-'} • Nível ${loc.floor ?? '-'} / Pos ${loc.position ?? '-'}`
     })
   }
 
@@ -300,6 +306,29 @@ export default function WarehouseMapPage() {
             {sceneAreas.length} estantes •{' '}
             {sceneAreas.reduce((sum, a) => sum + a.count, 0)} pontos
           </span>
+          {(() => {
+            const wh = warehouses.find((w) => w.id === warehouseId)
+            const floorCount = wh?.floors ?? 1
+            if (floorCount <= 1) {
+              return null
+            }
+            return (
+              <div className="pointer-events-auto flex gap-1">
+                {Array.from({ length: floorCount }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() =>
+                      setFocusToken(`floor::${i + 1}::${Date.now()}`)
+                    }
+                    className="cursor-pointer rounded-md bg-slate-900/80 px-2.5 py-1 text-xs font-medium text-slate-200 backdrop-blur transition-colors hover:bg-blue-600 hover:text-white"
+                    title={`Ir para o andar ${i + 1}`}
+                  >
+                    Andar {i + 1}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
         </div>
 
         {/* top-right controls */}
@@ -360,7 +389,7 @@ export default function WarehouseMapPage() {
                 <>
                   {' • '}
                   <span className="font-semibold text-blue-300">
-                    Corredor {selectedCorridor}
+                    Estante {selectedCorridor}
                   </span>{' '}
                   <button
                     onClick={() => setSelectedCorridor(null)}
@@ -386,7 +415,7 @@ export default function WarehouseMapPage() {
               {corridorGroups.map((group) => (
                 <div key={group.corridor}>
                   <p className="mb-1 flex items-center gap-1 text-xs font-bold text-blue-300">
-                    Corredor {group.corridor}
+                    Estante {group.corridor}
                   </p>
                   <div className="flex flex-col gap-1.5 border-l border-slate-700 pl-2">
                     {group.levels.map(([level, locs]) => (
@@ -441,7 +470,7 @@ export default function WarehouseMapPage() {
                   {detailLoc.area?.name ?? selectedName ?? '-'}
                 </p>
                 <p>
-                  <span className="text-slate-400">Corredor:</span>{' '}
+                  <span className="text-slate-400">Estante:</span>{' '}
                   {detailLoc.aisle ?? '-'}
                 </p>
                 <p>

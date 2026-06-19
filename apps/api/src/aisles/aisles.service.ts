@@ -50,6 +50,9 @@ export class AislesService {
       data: {
         areaId: dto.areaId,
         code: dto.code,
+        label: dto.label ?? dto.code,
+        corridorFront: dto.corridorFront ?? `C${count + 1}`,
+        corridorBack: dto.corridorBack ?? `C${count + 2}`,
         levels,
         positionsPerLevel,
         orderIndex: count,

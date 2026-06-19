@@ -51,7 +51,7 @@ export default function ScannerPage() {
           { label: 'Tipo', value: 'Localização' },
           { label: 'Código', value: loc.code },
           { label: 'Área', value: loc.area?.name ?? '-' },
-          { label: 'Corredor', value: loc.aisle ?? '-' },
+          { label: 'Estante', value: loc.aisle ?? '-' },
           { label: 'Nível', value: loc.floor ?? '-' },
           { label: 'Posição', value: loc.position ?? '-' }
         ]

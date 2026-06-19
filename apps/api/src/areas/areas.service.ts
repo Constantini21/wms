@@ -17,6 +17,9 @@ export class AreasService {
         select: {
           id: true,
           code: true,
+          label: true,
+          corridorFront: true,
+          corridorBack: true,
           levels: true,
           positionsPerLevel: true,
           orderIndex: true
@@ -108,9 +111,12 @@ export class AreasService {
         data: {
           areaId: id,
           code: aisleCode,
+          label: aisleCode,
           orderIndex: a,
           levels: area.levels,
           positionsPerLevel: area.positionsPerLevel,
+          corridorFront: `C${a + 1}`,
+          corridorBack: `C${a + 2}`,
           barcode: `${area.code}-${aisleCode}`
         }
       })

@@ -22,8 +22,9 @@ export function CorridorsModal({
   onClose,
   onChanged
 }: CorridorsModalProps) {
-  const [corridors, setCorridors] = useState<Aisle[]>([])
+  const [estantes, setEstantes] = useState<Aisle[]>([])
   const [code, setCode] = useState('')
+  const [label, setLabel] = useState('')
   const [levels, setLevels] = useState('3')
   const [positions, setPositions] = useState('6')
   const [error, setError] = useState<string | null>(null)
@@ -36,8 +37,9 @@ export function CorridorsModal({
 
   const load = useCallback(async (areaId: string) => {
     const data = await apiRequest<Aisle[]>(`/aisles?areaId=${areaId}`)
-    setCorridors(data)
+    setEstantes(data)
     setCode(nextCode(data))
+    setLabel('')
   }, [])
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export function CorridorsModal({
         body: {
           areaId: area.id,
           code,
+          label: label || undefined,
           levels: Number(levels) || 1,
           positionsPerLevel: Number(positions) || 1
         }
@@ -74,7 +77,7 @@ export function CorridorsModal({
   }
 
   const remove = async (id: string) => {
-    if (!window.confirm('Remover este corredor e suas posições?')) {
+    if (!window.confirm('Remover esta estante e suas posições?')) {
       return
     }
     await apiRequest(`/aisles/${id}`, { method: 'DELETE' })
@@ -85,35 +88,38 @@ export function CorridorsModal({
   return (
     <Modal
       open={area !== null}
-      title={`Corredores • ${area.name}`}
+      title={`Estantes • ${area.name}`}
       onClose={onClose}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          {corridors.length === 0 && (
+          {estantes.length === 0 && (
             <p className="text-sm text-slate-400">
-              Nenhum corredor. Adicione abaixo ou use “gerar localizações”.
+              Nenhuma estante. Adicione abaixo ou use “gerar localizações”.
             </p>
           )}
-          {corridors.map((c) => (
+          {estantes.map((c) => (
             <div
               key={c.id}
               className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
             >
               <div>
                 <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
-                  {c.code}
+                  🗄 {c.label || c.code}
                 </span>
                 <span className="ml-2 text-slate-500 dark:text-slate-400">
-                  {c.levels} níveis × {c.positionsPerLevel} pontos •{' '}
+                  {c.levels} níveis × {c.positionsPerLevel} pts •{' '}
                   {c._count?.locations ?? 0} locais
                 </span>
+                <div className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                  Corredores: {c.corridorFront ?? '-'} / {c.corridorBack ?? '-'}
+                </div>
               </div>
               <div className="flex gap-1">
                 <Button
                   variant="ghost"
                   onClick={() => setLabelAisle(c)}
-                  title="Etiqueta do corredor"
+                  title="Etiqueta da estante"
                 >
                   <FiPrinter />
                 </Button>
@@ -133,15 +139,23 @@ export function CorridorsModal({
             className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700"
           >
             <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              Novo corredor
+              Nova estante
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Código"
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
                 required
               />
+              <Input
+                label="Label (opcional)"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder="Auto = igual ao código"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Níveis"
                 type="number"
@@ -160,7 +174,7 @@ export function CorridorsModal({
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end">
               <Button type="submit">
-                <FiPlus /> Adicionar corredor
+                <FiPlus /> Adicionar estante
               </Button>
             </div>
           </form>
@@ -169,13 +183,13 @@ export function CorridorsModal({
 
       <Modal
         open={labelAisle !== null}
-        title="Etiqueta do corredor"
+        title="Etiqueta da estante"
         onClose={() => setLabelAisle(null)}
       >
         {labelAisle && (
           <CodeLabel
             value={labelAisle.barcode || labelAisle.code}
-            title={`Corredor ${labelAisle.code}`}
+            title={`Estante ${labelAisle.label || labelAisle.code}`}
             subtitle={`${area.name} • ${area.code}`}
           />
         )}

@@ -8,6 +8,18 @@ export class CreateAisleDto {
   code: string
 
   @IsOptional()
+  @IsString()
+  label?: string
+
+  @IsOptional()
+  @IsString()
+  corridorFront?: string
+
+  @IsOptional()
+  @IsString()
+  corridorBack?: string
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(30)

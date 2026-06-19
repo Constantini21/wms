@@ -8,6 +8,9 @@ import { BackSide } from 'three'
 export interface SceneCorridor {
   id: string
   code: string
+  label?: string | null
+  corridorFront?: string | null
+  corridorBack?: string | null
   levels: number
   positionsPerLevel: number
 }
@@ -253,26 +256,36 @@ function Corridor({
         })
       )}
 
+      {selected && (
+        <mesh position={[0, height / 2, z]}>
+          <boxGeometry args={[width + 0.2, height + 0.25, CORR_D + 0.2]} />
+          <meshBasicMaterial color="#ffffff" wireframe />
+        </mesh>
+      )}
+
       <Html
-        position={[-width / 2 - 0.3, 0.25, z]}
+        position={[0, height + 0.45, z]}
         center
-        distanceFactor={12}
-        zIndexRange={[28, 0]}
+        distanceFactor={13}
+        zIndexRange={[29, 0]}
       >
         <div
           onClick={onSelectCorridor}
           style={{
-            padding: '1px 6px',
-            borderRadius: 5,
-            background: 'rgba(2,6,23,0.85)',
-            color: '#93c5fd',
-            fontSize: 11,
+            padding: '2px 8px',
+            borderRadius: 7,
+            background: selected ? '#1d4ed8' : 'rgba(2,6,23,0.88)',
+            color: '#fff',
+            fontSize: 12,
             fontWeight: 700,
             whiteSpace: 'nowrap',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            border: selected
+              ? '1px solid #fff'
+              : '1px solid rgba(147,197,253,0.4)'
           }}
         >
-          {corridor.code}
+          🗄 {corridor.label || corridor.code}
         </div>
       </Html>
     </group>
@@ -361,8 +374,47 @@ function AreaGroup({
         />
       ))}
 
+      {corr.map((c, ci) => {
+        const z = -depth / 2 + (ci + 0.5) * (CORR_D + AISLE_GAP)
+        const labels: { code: string; gz: number }[] = [
+          {
+            code: c.corridorFront || `C${ci + 1}`,
+            gz: z - (CORR_D / 2 + AISLE_GAP / 2)
+          }
+        ]
+        if (ci === corr.length - 1) {
+          labels.push({
+            code: c.corridorBack || `C${ci + 2}`,
+            gz: z + (CORR_D / 2 + AISLE_GAP / 2)
+          })
+        }
+        return labels.map((lb) => (
+          <Html
+            key={`corr-${ci}-${lb.code}`}
+            position={[width / 2 + 0.5, 0.12, lb.gz]}
+            center
+            distanceFactor={13}
+            zIndexRange={[24, 0]}
+          >
+            <div
+              style={{
+                padding: '1px 6px',
+                borderRadius: 5,
+                background: 'rgba(16,185,129,0.85)',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {lb.code}
+            </div>
+          </Html>
+        ))
+      })}
+
       <Html
-        position={[0, height + 0.6, 0]}
+        position={[0, height + 0.95, 0]}
         center
         distanceFactor={14}
         zIndexRange={[30, 0]}
@@ -384,7 +436,7 @@ function AreaGroup({
         >
           {area.code}
           <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.85 }}>
-            {corr.length} corredores • {area.count} pts
+            {corr.length} estantes • {area.count} pts
           </div>
         </div>
       </Html>
@@ -482,14 +534,20 @@ export default function WarehouseScene({
     if (!focusToken) {
       return null
     }
-    const id = focusToken.split('::')[0]
+    const parts = focusToken.split('::')
+    const kind = parts[0]
+    if (kind === 'floor') {
+      const n = Number(parts[1]) || 1
+      return [0, (n - 1) * floorH + floorH / 2, 0]
+    }
+    const id = parts[0] === 'area' ? parts[1] : parts[0]
     const item = items.find((i) => i.area.id === id)
     if (!item) {
       return null
     }
     const { height } = areaFootprint(item.area)
     return [item.x, item.platformY + height / 2, item.z]
-  }, [focusToken, items])
+  }, [focusToken, items, floorH])
 
   const handleDragMove = (event: ThreeEvent<PointerEvent>) => {
     if (dragId) {

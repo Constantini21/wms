@@ -49,7 +49,10 @@ export interface Warehouse {
 export interface Aisle {
   id: string
   code: string
+  label?: string | null
   barcode?: string | null
+  corridorFront?: string | null
+  corridorBack?: string | null
   levels: number
   positionsPerLevel: number
   orderIndex: number

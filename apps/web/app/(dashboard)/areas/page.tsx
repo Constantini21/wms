@@ -144,7 +144,7 @@ export default function AreasPage() {
     const slots = area.aisles * area.levels * area.positionsPerLevel
     if (
       !window.confirm(
-        `Gerar ${slots} localizações para "${area.name}" (${area.aisles} corredores × ${area.levels} níveis × ${area.positionsPerLevel} posições)? As localizações atuais desta área serão substituídas.`
+        `Gerar ${slots} localizações para "${area.name}" (${area.aisles} estantes × ${area.levels} níveis × ${area.positionsPerLevel} posições)? As localizações atuais desta área serão substituídas.`
       )
     ) {
       return
@@ -187,7 +187,7 @@ export default function AreasPage() {
       header: 'Estrutura',
       cell: (a) => (
         <span className="text-slate-500 dark:text-slate-400">
-          {a.aisles} corr × {a.levels} nív × {a.positionsPerLevel} pts
+          {a.aisles} est × {a.levels} nív × {a.positionsPerLevel} pts
         </span>
       )
     },
@@ -227,7 +227,7 @@ export default function AreasPage() {
               <Button
                 variant="ghost"
                 onClick={() => setCorridorsArea(a)}
-                title="Corredores"
+                title="Estantes"
               >
                 <FiColumns />
               </Button>
@@ -235,7 +235,7 @@ export default function AreasPage() {
                 variant="ghost"
                 onClick={() => generate(a)}
                 disabled={busy === a.id}
-                title="Gerar localizações (corredores, níveis e pontos)"
+                title="Gerar localizações (estantes, níveis e pontos)"
               >
                 <FiGrid />
               </Button>
@@ -330,7 +330,7 @@ export default function AreasPage() {
           </Select>
           <div className="grid grid-cols-3 gap-3">
             <Input
-              label="Corredores"
+              label="Estantes"
               type="number"
               min="1"
               value={form.aisles}

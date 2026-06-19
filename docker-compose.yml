@@ -7,8 +7,6 @@ services:
       POSTGRES_USER: wms
       POSTGRES_PASSWORD: wms_password
       POSTGRES_DB: wms
-    ports:
-      - '5432:5432'
     volumes:
       - wms-pg-data:/var/lib/postgresql/data
     healthcheck:
@@ -30,22 +28,22 @@ services:
       DATABASE_URL: postgresql://wms:wms_password@postgres:5432/wms?schema=public
       JWT_SECRET: change_me_in_production
       JWT_EXPIRES_IN: 7d
-      PORT: 3001
+      PORT: 4000
     ports:
-      - '3001:3001'
+      - '4000:4000'
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3001
+        NEXT_PUBLIC_API_URL: https://api-wms.constantini.online
     container_name: wms-web
     restart: unless-stopped
     depends_on:
       - api
     ports:
-      - '3000:80'
+      - '4001:80'
 
 volumes:
   wms-pg-data:

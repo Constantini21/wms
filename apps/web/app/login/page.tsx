@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input'
 export default function LoginPage() {
   const { login, user, loading } = useAuth()
   const router = useRouter()
-  const [email, setEmail] = useState('admin@wms.local')
+  const [email, setEmail] = useState('admin')
   const [password, setPassword] = useState('admin123')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -48,8 +48,8 @@ export default function LoginPage() {
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
-            label="E-mail"
-            type="email"
+            label="Usuário"
+            type="text"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
@@ -67,7 +67,7 @@ export default function LoginPage() {
           </Button>
         </form>
         <p className="mt-4 text-center text-xs text-slate-400">
-          Acesso padrão: admin@wms.local / admin123
+          Acesso padrão: admin / admin123
         </p>
       </div>
     </div>

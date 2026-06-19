@@ -28,5 +28,5 @@ COPY apps/api/package.json ./package.json
 COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
-EXPOSE 3001
+EXPOSE 4000
 ENTRYPOINT ["./docker-entrypoint.sh"]

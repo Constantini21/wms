@@ -73,11 +73,11 @@ async function main() {
       }))
   })
 
-  const adminEmail = 'admin@wms.local'
+  const adminEmail = 'admin'
   const passwordHash = await bcrypt.hash('admin123', 10)
   await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { roleId: adminRole.id },
+    update: { roleId: adminRole.id, passwordHash },
     create: {
       name: 'System Administrator',
       email: adminEmail,
@@ -86,7 +86,7 @@ async function main() {
     }
   })
 
-  console.log('Seed complete. Login: admin@wms.local / admin123')
+  console.log('Seed complete. Login: admin / admin123')
 }
 
 main()

@@ -33,13 +33,33 @@ for a complete Warehouse Management System.
 docker compose up --build
 ```
 
-- Web: http://localhost:3000
-- API: http://localhost:3001/api
-- PostgreSQL: localhost:5432
+- Web: http://localhost:4001
+- API: http://localhost:4000/api
+- Database: internal (not published to host)
 
 The API container automatically applies the schema and seeds the database.
 
-Default login: `admin@wms.local` / `admin123`
+Default login: `admin` / `admin123`
+
+## Public access (Cloudflare Tunnel)
+
+The stack is exposed through an existing Cloudflare named tunnel
+(`umbrel`, id `29ce104e-d83f-439f-89b9-56c66ccf745c`) configured in
+`~/.cloudflared/config.yml`:
+
+| Hostname                     | Service                         |
+| ---------------------------- | ------------------------------- |
+| `wms.constantini.online`     | `http://localhost:4001` (web)   |
+| `api-wms.constantini.online` | `http://localhost:4000` (api)   |
+
+The static frontend is built to call `https://api-wms.constantini.online`,
+so opening `https://wms.constantini.online` is enough to use the system.
+
+After editing the ingress, reload the tunnel:
+
+```bash
+systemctl --user restart cloudflared
+```
 
 ## Local development
 

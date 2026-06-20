@@ -36,7 +36,14 @@ export function CorridorsModal({
     formState: { errors, isSubmitting }
   } = useForm<AisleInput>({
     resolver: zodResolver(aisleSchema),
-    defaultValues: { code: '', label: '', levels: 3, positionsPerLevel: 6 }
+    defaultValues: {
+      code: '',
+      label: '',
+      corridorFront: '',
+      corridorBack: '',
+      levels: 3,
+      positionsPerLevel: 6
+    }
   })
 
   const nextCode = (list: Aisle[]) => {
@@ -51,6 +58,8 @@ export function CorridorsModal({
       reset({
         code: nextCode(data),
         label: '',
+        corridorFront: '',
+        corridorBack: '',
         levels,
         positionsPerLevel: positions
       })
@@ -78,6 +87,8 @@ export function CorridorsModal({
           areaId: area.id,
           code: values.code,
           label: values.label || undefined,
+          corridorFront: values.corridorFront || undefined,
+          corridorBack: values.corridorBack || undefined,
           levels: values.levels,
           positionsPerLevel: values.positionsPerLevel
         }
@@ -167,6 +178,22 @@ export function CorridorsModal({
                 placeholder="Auto = igual ao código"
                 error={errors.label?.message}
                 {...register('label')}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Corredor frente"
+                info="Corredor de acesso à frente da estante (ex.: A-01). Em branco = gerado automático."
+                placeholder="Ex.: A-01"
+                error={errors.corridorFront?.message}
+                {...register('corridorFront')}
+              />
+              <Input
+                label="Corredor fundo"
+                info="Corredor de acesso aos fundos da estante (ex.: A-02). Em branco = gerado automático."
+                placeholder="Ex.: A-02"
+                error={errors.corridorBack?.message}
+                {...register('corridorBack')}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

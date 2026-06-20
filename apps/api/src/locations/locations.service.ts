@@ -91,6 +91,7 @@ export class LocationsService {
       data: {
         code: dto.code,
         areaId: dto.areaId,
+        aisleId: dto.aisleId,
         name: dto.name,
         aisle: dto.aisle,
         floor: dto.floor,

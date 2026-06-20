@@ -1,10 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
-import { FiEdit2, FiMapPin, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
+import {
+  FiCrosshair,
+  FiEdit2,
+  FiMapPin,
+  FiPlus,
+  FiPrinter,
+  FiTrash2
+} from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PERMISSIONS } from '@/lib/permissions'
@@ -16,14 +23,17 @@ import { Modal } from '@/components/ui/Modal'
 import { RangeField } from '@/components/ui/RangeField'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { CodeLabel } from '@/components/CodeLabel'
+import { LocationPicker } from '@/components/LocationPicker'
 import {
   locationSchema,
   locationDefaults,
   type LocationInput
 } from '@/lib/schemas/location'
-import type { Area, Location, Paginated } from '@/lib/types'
+import type { Aisle, Area, Location, Paginated } from '@/lib/types'
 
 const PAGE_SIZE = 20
+
+const pad2 = (value: number | string) => String(value).padStart(2, '0')
 
 export default function LocationsPage() {
   const { hasPermission } = useAuth()
@@ -33,7 +43,9 @@ export default function LocationsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [areas, setAreas] = useState<Area[]>([])
+  const [aisles, setAisles] = useState<Aisle[]>([])
   const [modalOpen, setModalOpen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [labelLocation, setLabelLocation] = useState<Location | null>(null)
@@ -43,11 +55,78 @@ export default function LocationsPage() {
     handleSubmit,
     reset,
     control,
+    watch,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting }
   } = useForm<LocationInput>({
     resolver: zodResolver(locationSchema),
     defaultValues: locationDefaults
   })
+
+  const watchedAreaId = watch('areaId')
+  const watchedAisleId = watch('aisleId')
+  const watchedFloor = watch('floor')
+  const watchedPosition = watch('position')
+
+  const loadAisles = useCallback(async (areaId: string) => {
+    if (!areaId) {
+      setAisles([])
+      return
+    }
+    try {
+      const data = await apiRequest<Aisle[]>(`/aisles?areaId=${areaId}`)
+      setAisles(data)
+    } catch {
+      setAisles([])
+    }
+  }, [])
+
+  useEffect(() => {
+    loadAisles(watchedAreaId).catch(() => undefined)
+  }, [watchedAreaId, loadAisles])
+
+  const selectedAisle = useMemo(
+    () => aisles.find((a) => a.id === watchedAisleId) ?? null,
+    [aisles, watchedAisleId]
+  )
+  const selectedAreaObj = useMemo(
+    () => areas.find((a) => a.id === watchedAreaId) ?? null,
+    [areas, watchedAreaId]
+  )
+
+  const buildCode = useCallback(
+    (aisleCode: string, level: string, position: string) => {
+      const areaCode = selectedAreaObj?.code ?? 'AREA'
+      return `${areaCode}-${aisleCode}-A${level}-P${pad2(position)}`
+    },
+    [selectedAreaObj]
+  )
+
+  const applyAisle = (aisleId: string) => {
+    const aisle = aisles.find((a) => a.id === aisleId)
+    setValue('aisleId', aisleId, { shouldValidate: true })
+    setValue('aisle', aisle?.code ?? '', { shouldValidate: true })
+  }
+
+  const applyPlacement = (
+    aisleCode: string,
+    level: number,
+    position: number
+  ) => {
+    const aisle = aisles.find((a) => a.code === aisleCode)
+    if (aisle) {
+      setValue('aisleId', aisle.id, { shouldValidate: true })
+    }
+    setValue('aisle', aisleCode, { shouldValidate: true })
+    setValue('floor', String(level), { shouldValidate: true })
+    setValue('position', pad2(position), { shouldValidate: true })
+    if (!getValues('code')) {
+      setValue('code', buildCode(aisleCode, String(level), pad2(position)), {
+        shouldValidate: true
+      })
+    }
+  }
 
   const load = useCallback(async (target: number) => {
     const result = await apiRequest<Paginated<Location>>(
@@ -81,6 +160,7 @@ export default function LocationsPage() {
       code: location.code,
       name: location.name ?? '',
       areaId: location.areaId,
+      aisleId: location.aisleId ?? '',
       aisle: location.aisle ?? '',
       floor: location.floor ?? '',
       position: location.position ?? '',
@@ -99,6 +179,7 @@ export default function LocationsPage() {
         code: values.code,
         name: values.name || undefined,
         areaId: values.areaId,
+        aisleId: values.aisleId || undefined,
         aisle: values.aisle || undefined,
         floor: values.floor || undefined,
         position: values.position || undefined,
@@ -256,25 +337,79 @@ export default function LocationsPage() {
             error={errors.name?.message}
             {...register('name')}
           />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Input
-              label="Estante"
-              info="Código da estante a que pertence (ex.: A1)."
-              error={errors.aisle?.message}
-              {...register('aisle')}
-            />
-            <Input
-              label="Nível"
-              info="Nível (andar da prateleira) da localização."
-              error={errors.floor?.message}
-              {...register('floor')}
-            />
-            <Input
-              label="Posição"
-              info="Posição (ponto) dentro do nível."
-              error={errors.position?.message}
-              {...register('position')}
-            />
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Select
+                label="Estante"
+                info="Estante (prateleira) cadastrada nesta área. Cadastre estantes em Áreas → Estantes."
+                error={errors.aisle?.message}
+                value={watchedAisleId ?? ''}
+                onChange={(event) => applyAisle(event.target.value)}
+              >
+                <option value="">
+                  {aisles.length === 0
+                    ? 'Nenhuma estante cadastrada'
+                    : 'Selecione a estante'}
+                </option>
+                {aisles.map((aisle) => (
+                  <option key={aisle.id} value={aisle.id}>
+                    {aisle.label || aisle.code}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Nível"
+                info="Nível (andar da prateleira). As opções seguem a estante selecionada."
+                error={errors.floor?.message}
+                value={watchedFloor ?? ''}
+                onChange={(event) =>
+                  setValue('floor', event.target.value, {
+                    shouldValidate: true
+                  })
+                }
+                disabled={!selectedAisle}
+              >
+                <option value="">—</option>
+                {Array.from({ length: selectedAisle?.levels ?? 0 }).map(
+                  (_, i) => (
+                    <option key={i + 1} value={String(i + 1)}>
+                      {i + 1}
+                    </option>
+                  )
+                )}
+              </Select>
+              <Select
+                label="Posição"
+                info="Posição (ponto) dentro do nível. As opções seguem a estante selecionada."
+                error={errors.position?.message}
+                value={watchedPosition ?? ''}
+                onChange={(event) =>
+                  setValue('position', event.target.value, {
+                    shouldValidate: true
+                  })
+                }
+                disabled={!selectedAisle}
+              >
+                <option value="">—</option>
+                {Array.from({
+                  length: selectedAisle?.positionsPerLevel ?? 0
+                }).map((_, i) => (
+                  <option key={i + 1} value={pad2(i + 1)}>
+                    {i + 1}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="self-start"
+              onClick={() => setPickerOpen(true)}
+              disabled={!watchedAreaId}
+              title="Escolher a posição clicando no mapa 3D"
+            >
+              <FiCrosshair /> Selecionar no mapa 3D
+            </Button>
           </div>
           <Controller
             control={control}
@@ -332,6 +467,15 @@ export default function LocationsPage() {
           />
         )}
       </Modal>
+      <LocationPicker
+        open={pickerOpen}
+        area={selectedAreaObj}
+        aisles={aisles}
+        onClose={() => setPickerOpen(false)}
+        onPick={(aisleCode, level, position) =>
+          applyPlacement(aisleCode, level, position)
+        }
+      />
     </div>
   )
 }

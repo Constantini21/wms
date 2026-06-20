@@ -16,6 +16,10 @@ export class CreateLocationDto {
 
   @IsOptional()
   @IsString()
+  aisleId?: string
+
+  @IsOptional()
+  @IsString()
   name?: string
 
   @IsOptional()

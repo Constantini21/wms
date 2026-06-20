@@ -90,6 +90,7 @@ export interface Location {
   capacity: number | null
   active: boolean
   areaId: string
+  aisleId?: string | null
   allocations?: {
     id: string
     quantity: number

@@ -18,6 +18,10 @@ export class UpdateLocationDto {
 
   @IsOptional()
   @IsString()
+  aisleId?: string
+
+  @IsOptional()
+  @IsString()
   name?: string
 
   @IsOptional()

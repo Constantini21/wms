@@ -1,12 +1,15 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { CodeLabel } from '@/components/CodeLabel'
+import { aisleSchema, type AisleInput } from '@/lib/schemas/aisle'
 import type { Aisle, Area } from '@/lib/types'
 
 interface CorridorsModalProps {
@@ -23,31 +26,42 @@ export function CorridorsModal({
   onChanged
 }: CorridorsModalProps) {
   const [estantes, setEstantes] = useState<Aisle[]>([])
-  const [code, setCode] = useState('')
-  const [label, setLabel] = useState('')
-  const [levels, setLevels] = useState('3')
-  const [positions, setPositions] = useState('6')
   const [error, setError] = useState<string | null>(null)
   const [labelAisle, setLabelAisle] = useState<Aisle | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting }
+  } = useForm<AisleInput>({
+    resolver: zodResolver(aisleSchema),
+    defaultValues: { code: '', label: '', levels: 3, positionsPerLevel: 6 }
+  })
 
   const nextCode = (list: Aisle[]) => {
     const i = list.length
     return `${String.fromCharCode(65 + (i % 26))}${i + 1}`
   }
 
-  const load = useCallback(async (areaId: string) => {
-    const data = await apiRequest<Aisle[]>(`/aisles?areaId=${areaId}`)
-    setEstantes(data)
-    setCode(nextCode(data))
-    setLabel('')
-  }, [])
+  const load = useCallback(
+    async (areaId: string, levels: number, positions: number) => {
+      const data = await apiRequest<Aisle[]>(`/aisles?areaId=${areaId}`)
+      setEstantes(data)
+      reset({
+        code: nextCode(data),
+        label: '',
+        levels,
+        positionsPerLevel: positions
+      })
+    },
+    [reset]
+  )
 
   useEffect(() => {
     if (area) {
       setError(null)
-      setLevels(String(area.levels))
-      setPositions(String(area.positionsPerLevel))
-      load(area.id).catch(() => undefined)
+      load(area.id, area.levels, area.positionsPerLevel).catch(() => undefined)
     }
   }, [area, load])
 
@@ -55,21 +69,20 @@ export function CorridorsModal({
     return null
   }
 
-  const add = async (event: FormEvent) => {
-    event.preventDefault()
+  const add = async (values: AisleInput) => {
     setError(null)
     try {
       await apiRequest('/aisles', {
         method: 'POST',
         body: {
           areaId: area.id,
-          code,
-          label: label || undefined,
-          levels: Number(levels) || 1,
-          positionsPerLevel: Number(positions) || 1
+          code: values.code,
+          label: values.label || undefined,
+          levels: values.levels,
+          positionsPerLevel: values.positionsPerLevel
         }
       })
-      await load(area.id)
+      await load(area.id, area.levels, area.positionsPerLevel)
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao adicionar')
@@ -81,7 +94,7 @@ export function CorridorsModal({
       return
     }
     await apiRequest(`/aisles/${id}`, { method: 'DELETE' })
-    await load(area.id)
+    await load(area.id, area.levels, area.positionsPerLevel)
     onChanged()
   }
 
@@ -135,7 +148,7 @@ export function CorridorsModal({
 
         {canWrite && (
           <form
-            onSubmit={add}
+            onSubmit={handleSubmit(add)}
             className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700"
           >
             <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -144,36 +157,39 @@ export function CorridorsModal({
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Código"
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                required
+                info="Código da estante (ex.: A1). Gerado automaticamente, mas editável."
+                error={errors.code?.message}
+                {...register('code')}
               />
               <Input
                 label="Label (opcional)"
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
+                info="Rótulo amigável exibido nas etiquetas. Em branco = igual ao código."
                 placeholder="Auto = igual ao código"
+                error={errors.label?.message}
+                {...register('label')}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Níveis"
+                info="Número de níveis (andares da prateleira) desta estante."
                 type="number"
                 min="1"
-                value={levels}
-                onChange={(event) => setLevels(event.target.value)}
+                error={errors.levels?.message}
+                {...register('levels')}
               />
               <Input
                 label="Pontos"
+                info="Número de posições (pontos) por nível desta estante."
                 type="number"
                 min="1"
-                value={positions}
-                onChange={(event) => setPositions(event.target.value)}
+                error={errors.positionsPerLevel?.message}
+                {...register('positionsPerLevel')}
               />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end">
-              <Button type="submit">
+              <Button type="submit" disabled={isSubmitting}>
                 <FiPlus /> Adicionar estante
               </Button>
             </div>

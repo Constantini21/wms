@@ -1,6 +1,8 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -10,15 +12,9 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
+import { roleSchema, roleDefaults, type RoleInput } from '@/lib/schemas/role'
 import type { Paginated, Permission, Role } from '@/lib/types'
 
-interface FormState {
-  name: string
-  description: string
-  permissionKeys: string[]
-}
-
-const emptyForm: FormState = { name: '', description: '', permissionKeys: [] }
 const PAGE_SIZE = 20
 
 export default function RolesPage() {
@@ -30,8 +26,21 @@ export default function RolesPage() {
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting }
+  } = useForm<RoleInput>({
+    resolver: zodResolver(roleSchema),
+    defaultValues: roleDefaults
+  })
+
+  const selectedKeys = watch('permissionKeys')
 
   const load = useCallback(async (target: number) => {
     const [roleData, permissionData] = await Promise.all([
@@ -52,14 +61,14 @@ export default function RolesPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm(emptyForm)
+    reset(roleDefaults)
     setError(null)
     setModalOpen(true)
   }
 
   const openEdit = (role: Role) => {
     setEditingId(role.id)
-    setForm({
+    reset({
       name: role.name,
       description: role.description ?? '',
       permissionKeys: role.permissionKeys
@@ -69,22 +78,23 @@ export default function RolesPage() {
   }
 
   const togglePermission = (key: string) => {
-    setForm((prev) => ({
-      ...prev,
-      permissionKeys: prev.permissionKeys.includes(key)
-        ? prev.permissionKeys.filter((item) => item !== key)
-        : [...prev.permissionKeys, key]
-    }))
+    const current = selectedKeys ?? []
+    setValue(
+      'permissionKeys',
+      current.includes(key)
+        ? current.filter((item) => item !== key)
+        : [...current, key],
+      { shouldDirty: true }
+    )
   }
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
+  const onSubmit = async (values: RoleInput) => {
     setError(null)
     try {
       const body = {
-        name: form.name,
-        description: form.description || undefined,
-        permissionKeys: form.permissionKeys
+        name: values.name,
+        description: values.description || undefined,
+        permissionKeys: values.permissionKeys
       }
       if (editingId) {
         await apiRequest(`/roles/${editingId}`, { method: 'PATCH', body })
@@ -182,19 +192,18 @@ export default function RolesPage() {
         title={editingId ? 'Editar perfil' : 'Novo perfil'}
         onClose={() => setModalOpen(false)}
       >
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input
             label="Nome"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
+            info="Nome do perfil de acesso (ex.: Administrador, Operador)."
+            error={errors.name?.message}
+            {...register('name')}
           />
           <Input
             label="Descrição"
-            value={form.description}
-            onChange={(event) =>
-              setForm({ ...form, description: event.target.value })
-            }
+            info="Texto opcional explicando o propósito deste perfil."
+            error={errors.description?.message}
+            {...register('description')}
           />
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -204,11 +213,11 @@ export default function RolesPage() {
               {permissions.map((permission) => (
                 <label
                   key={permission.id}
-                  className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
+                  className="flex cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
                 >
                   <input
                     type="checkbox"
-                    checked={form.permissionKeys.includes(permission.key)}
+                    checked={(selectedKeys ?? []).includes(permission.key)}
                     onChange={() => togglePermission(permission.key)}
                   />
                   {permission.key}
@@ -225,7 +234,9 @@ export default function RolesPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              Salvar
+            </Button>
           </div>
         </form>
       </Modal>

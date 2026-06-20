@@ -1,6 +1,8 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { FiEdit2, FiMapPin, FiPlus, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -13,27 +15,13 @@ import { DataTable, Column } from '@/components/ui/DataTable'
 import { ScanField } from '@/components/ScanField'
 import { RangeField } from '@/components/ui/RangeField'
 import { AllocateModal } from './AllocateModal'
+import {
+  productSchema,
+  productDefaults,
+  type ProductInput
+} from '@/lib/schemas/product'
 import type { Paginated, Product } from '@/lib/types'
 
-interface FormState {
-  sku: string
-  name: string
-  description: string
-  barcode: string
-  weight: string
-  turnoverScore: number
-  quantity: string
-}
-
-const emptyForm: FormState = {
-  sku: '',
-  name: '',
-  description: '',
-  barcode: '',
-  weight: '',
-  turnoverScore: 5,
-  quantity: '0'
-}
 const PAGE_SIZE = 20
 
 export default function ProductsPage() {
@@ -44,9 +32,19 @@ export default function ProductsPage() {
   const [total, setTotal] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [allocateProduct, setAllocateProduct] = useState<Product | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors, isSubmitting }
+  } = useForm<ProductInput>({
+    resolver: zodResolver(productSchema),
+    defaultValues: productDefaults
+  })
 
   const load = useCallback(async (target: number) => {
     const result = await apiRequest<Paginated<Product>>(
@@ -63,38 +61,37 @@ export default function ProductsPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm(emptyForm)
+    reset(productDefaults)
     setError(null)
     setModalOpen(true)
   }
 
   const openEdit = (product: Product) => {
     setEditingId(product.id)
-    setForm({
+    reset({
       sku: product.sku,
       name: product.name,
       description: product.description ?? '',
       barcode: product.barcode ?? '',
-      weight: product.weight?.toString() ?? '',
+      weight: product.weight ?? undefined,
       turnoverScore: product.turnoverScore,
-      quantity: product.quantity.toString()
+      quantity: product.quantity
     })
     setError(null)
     setModalOpen(true)
   }
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
+  const onSubmit = async (values: ProductInput) => {
     setError(null)
     try {
       const body = {
-        sku: form.sku,
-        name: form.name,
-        description: form.description || undefined,
-        barcode: form.barcode || undefined,
-        weight: form.weight ? Number(form.weight) : undefined,
-        turnoverScore: form.turnoverScore,
-        quantity: form.quantity ? Number(form.quantity) : 0
+        sku: values.sku,
+        name: values.name,
+        description: values.description || undefined,
+        barcode: values.barcode || undefined,
+        weight: values.weight,
+        turnoverScore: values.turnoverScore,
+        quantity: values.quantity
       }
       if (editingId) {
         await apiRequest(`/products/${editingId}`, { method: 'PATCH', body })
@@ -223,49 +220,59 @@ export default function ProductsPage() {
         title={editingId ? 'Editar produto' : 'Novo produto'}
         onClose={() => setModalOpen(false)}
       >
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input
             label="SKU"
-            value={form.sku}
-            onChange={(event) => setForm({ ...form, sku: event.target.value })}
-            required
+            info="Código interno único do produto (Stock Keeping Unit)."
+            error={errors.sku?.message}
+            {...register('sku')}
           />
           <Input
             label="Nome"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
+            info="Nome comercial do produto."
+            error={errors.name?.message}
+            {...register('name')}
           />
-          <ScanField
-            label="Código de barras / QR"
-            value={form.barcode}
-            onChange={(value) => setForm({ ...form, barcode: value })}
-            placeholder="Escaneie ou digite"
+          <Controller
+            control={control}
+            name="barcode"
+            render={({ field }) => (
+              <ScanField
+                label="Código de barras / QR"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                placeholder="Escaneie ou digite"
+              />
+            )}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Peso (kg)"
+              info="Peso unitário em quilos. Usado nas sugestões de armazenagem."
               type="number"
               step="0.001"
-              value={form.weight}
-              onChange={(event) =>
-                setForm({ ...form, weight: event.target.value })
-              }
+              error={errors.weight?.message}
+              {...register('weight')}
             />
             <Input
               label="Quantidade em estoque"
+              info="Quantidade total disponível em estoque."
               type="number"
-              value={form.quantity}
-              onChange={(event) =>
-                setForm({ ...form, quantity: event.target.value })
-              }
+              error={errors.quantity?.message}
+              {...register('quantity')}
             />
           </div>
-          <RangeField
-            label="Frequência de saída"
-            value={form.turnoverScore}
-            onChange={(value) => setForm({ ...form, turnoverScore: value })}
-            hint="0 = sai raramente, 10 = sai com muita frequência (vai para locais de fácil acesso)"
+          <Controller
+            control={control}
+            name="turnoverScore"
+            render={({ field }) => (
+              <RangeField
+                label="Frequência de saída"
+                value={field.value}
+                onChange={field.onChange}
+                hint="0 = sai raramente, 10 = sai com muita frequência (vai para locais de fácil acesso)"
+              />
+            )}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2">
@@ -276,7 +283,9 @@ export default function ProductsPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              Salvar
+            </Button>
           </div>
         </form>
       </Modal>

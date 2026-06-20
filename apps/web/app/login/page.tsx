@@ -1,20 +1,28 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { FiLock, FiUser } from 'react-icons/fi'
 import { TbQrcode } from 'react-icons/tb'
 import { useAuth } from '@/lib/auth'
 import { ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
+import { loginSchema, type LoginInput } from '@/lib/schemas/login'
 
 export default function LoginPage() {
   const { login, user, loading } = useAuth()
   const router = useRouter()
-  const [email, setEmail] = useState('admin')
-  const [password, setPassword] = useState('admin123')
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting }
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: 'admin', password: 'admin123' }
+  })
 
   useEffect(() => {
     if (!loading && user) {
@@ -22,12 +30,10 @@ export default function LoginPage() {
     }
   }, [loading, user, router])
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
+  const onSubmit = async (values: LoginInput) => {
     setError(null)
-    setSubmitting(true)
     try {
-      await login(email, password)
+      await login(values.email, values.password)
       router.replace('/dashboard')
     } catch (err) {
       if (err instanceof ApiError) {
@@ -35,8 +41,6 @@ export default function LoginPage() {
       } else {
         setError('Não foi possível entrar. Tente novamente.')
       }
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -56,7 +60,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-300">
               Usuário
@@ -65,9 +69,7 @@ export default function LoginPage() {
               <FiUser className="text-slate-400" />
               <input
                 type="text"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
+                {...register('email')}
                 className="w-full bg-transparent py-2.5 text-sm text-white outline-none placeholder:text-slate-500"
                 placeholder="admin"
               />
@@ -82,9 +84,7 @@ export default function LoginPage() {
               <FiLock className="text-slate-400" />
               <input
                 type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
+                {...register('password')}
                 className="w-full bg-transparent py-2.5 text-sm text-white outline-none placeholder:text-slate-500"
                 placeholder="••••••••"
               />
@@ -99,10 +99,10 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            disabled={submitting}
+            disabled={isSubmitting}
             className="mt-2 w-full py-2.5"
           >
-            {submitting ? 'Entrando...' : 'Entrar'}
+            {isSubmitting ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
 

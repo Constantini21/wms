@@ -1,6 +1,8 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -10,16 +12,13 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { DataTable, Column } from '@/components/ui/DataTable'
+import {
+  warehouseSchema,
+  warehouseDefaults,
+  type WarehouseInput
+} from '@/lib/schemas/warehouse'
 import type { Paginated, Warehouse } from '@/lib/types'
 
-interface FormState {
-  code: string
-  name: string
-  address: string
-  floors: string
-}
-
-const emptyForm: FormState = { code: '', name: '', address: '', floors: '1' }
 const PAGE_SIZE = 20
 
 export default function WarehousesPage() {
@@ -30,8 +29,17 @@ export default function WarehousesPage() {
   const [total, setTotal] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting }
+  } = useForm<WarehouseInput>({
+    resolver: zodResolver(warehouseSchema),
+    defaultValues: warehouseDefaults
+  })
 
   const load = useCallback(async (target: number) => {
     const result = await apiRequest<Paginated<Warehouse>>(
@@ -48,32 +56,31 @@ export default function WarehousesPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm(emptyForm)
+    reset(warehouseDefaults)
     setError(null)
     setModalOpen(true)
   }
 
   const openEdit = (warehouse: Warehouse) => {
     setEditingId(warehouse.id)
-    setForm({
+    reset({
       code: warehouse.code,
       name: warehouse.name,
       address: warehouse.address ?? '',
-      floors: warehouse.floors.toString()
+      floors: warehouse.floors
     })
     setError(null)
     setModalOpen(true)
   }
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
+  const onSubmit = async (values: WarehouseInput) => {
     setError(null)
     try {
       const body = {
-        code: form.code,
-        name: form.name,
-        address: form.address || undefined,
-        floors: Number(form.floors) || 1
+        code: values.code,
+        name: values.name,
+        address: values.address || undefined,
+        floors: values.floors
       }
       if (editingId) {
         await apiRequest(`/warehouses/${editingId}`, { method: 'PATCH', body })
@@ -166,34 +173,32 @@ export default function WarehousesPage() {
         title={editingId ? 'Editar galpão' : 'Novo galpão'}
         onClose={() => setModalOpen(false)}
       >
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input
             label="Código"
-            value={form.code}
-            onChange={(event) => setForm({ ...form, code: event.target.value })}
-            required
+            info="Código curto e único do galpão (ex.: GAL-01). Aparece em endereços e relatórios."
+            error={errors.code?.message}
+            {...register('code')}
           />
           <Input
             label="Nome"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
+            info="Nome descritivo do galpão (ex.: Centro de Distribuição Sul)."
+            error={errors.name?.message}
+            {...register('name')}
           />
           <Input
             label="Andares do galpão"
+            info="Quantidade de pisos (pavimentos) do prédio. Define os andares disponíveis ao cadastrar áreas."
             type="number"
             min="1"
-            value={form.floors}
-            onChange={(event) =>
-              setForm({ ...form, floors: event.target.value })
-            }
+            error={errors.floors?.message}
+            {...register('floors')}
           />
           <Input
             label="Endereço"
-            value={form.address}
-            onChange={(event) =>
-              setForm({ ...form, address: event.target.value })
-            }
+            info="Endereço físico do galpão (opcional)."
+            error={errors.address?.message}
+            {...register('address')}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2">
@@ -204,7 +209,9 @@ export default function WarehousesPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              Salvar
+            </Button>
           </div>
         </form>
       </Modal>

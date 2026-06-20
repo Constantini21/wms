@@ -1,6 +1,8 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import {
   FiColumns,
@@ -22,29 +24,9 @@ import { Modal } from '@/components/ui/Modal'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { CodeLabel } from '@/components/CodeLabel'
 import { CorridorsModal } from './CorridorsModal'
+import { areaSchema, areaDefaults, type AreaInput } from '@/lib/schemas/area'
 import type { Area, Paginated, Warehouse } from '@/lib/types'
 
-interface FormState {
-  code: string
-  name: string
-  warehouseId: string
-  barcode: string
-  aisles: string
-  levels: string
-  positionsPerLevel: string
-  floor: string
-}
-
-const emptyForm: FormState = {
-  code: '',
-  name: '',
-  warehouseId: '',
-  barcode: '',
-  aisles: '1',
-  levels: '3',
-  positionsPerLevel: '6',
-  floor: '1'
-}
 const PAGE_SIZE = 20
 
 export default function AreasPage() {
@@ -57,11 +39,25 @@ export default function AreasPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [labelArea, setLabelArea] = useState<Area | null>(null)
   const [corridorsArea, setCorridorsArea] = useState<Area | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors, isSubmitting }
+  } = useForm<AreaInput>({
+    resolver: zodResolver(areaSchema),
+    defaultValues: areaDefaults
+  })
+
+  const selectedWarehouseId = watch('warehouseId')
+  const floorCount =
+    warehouses.find((w) => w.id === selectedWarehouseId)?.floors ?? 1
 
   const load = useCallback(async (target: number) => {
     const result = await apiRequest<Paginated<Area>>(
@@ -86,40 +82,39 @@ export default function AreasPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ ...emptyForm, warehouseId: warehouses[0]?.id ?? '' })
+    reset({ ...areaDefaults, warehouseId: warehouses[0]?.id ?? '' })
     setError(null)
     setModalOpen(true)
   }
 
   const openEdit = (area: Area) => {
     setEditingId(area.id)
-    setForm({
+    reset({
       code: area.code,
       name: area.name,
       warehouseId: area.warehouseId,
       barcode: area.barcode ?? '',
-      aisles: area.aisles.toString(),
-      levels: area.levels.toString(),
-      positionsPerLevel: area.positionsPerLevel.toString(),
-      floor: area.floor.toString()
+      aisles: area.aisles,
+      levels: area.levels,
+      positionsPerLevel: area.positionsPerLevel,
+      floor: area.floor
     })
     setError(null)
     setModalOpen(true)
   }
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
+  const onSubmit = async (values: AreaInput) => {
     setError(null)
     try {
       const body = {
-        code: form.code,
-        name: form.name,
-        warehouseId: form.warehouseId,
-        barcode: form.barcode || undefined,
-        aisles: Number(form.aisles) || 1,
-        levels: Number(form.levels) || 1,
-        positionsPerLevel: Number(form.positionsPerLevel) || 1,
-        floor: Number(form.floor) || 1
+        code: values.code,
+        name: values.name,
+        warehouseId: values.warehouseId,
+        barcode: values.barcode || undefined,
+        aisles: values.aisles,
+        levels: values.levels,
+        positionsPerLevel: values.positionsPerLevel,
+        floor: values.floor
       }
       if (editingId) {
         await apiRequest(`/areas/${editingId}`, { method: 'PATCH', body })
@@ -282,14 +277,12 @@ export default function AreasPage() {
         title={editingId ? 'Editar área' : 'Nova área'}
         onClose={() => setModalOpen(false)}
       >
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Select
             label="Galpão"
-            value={form.warehouseId}
-            onChange={(event) =>
-              setForm({ ...form, warehouseId: event.target.value })
-            }
-            required
+            info="Galpão (prédio) ao qual esta área pertence."
+            error={errors.warehouseId?.message}
+            {...register('warehouseId')}
           >
             <option value="" disabled>
               Selecione um galpão
@@ -303,29 +296,22 @@ export default function AreasPage() {
           <Input
             label="Código"
             info="Código curto e único da área dentro do galpão (ex.: A-01). Aparece nas etiquetas e endereços."
-            value={form.code}
-            onChange={(event) => setForm({ ...form, code: event.target.value })}
-            required
+            error={errors.code?.message}
+            {...register('code')}
           />
           <Input
             label="Nome"
             info="Nome descritivo da área (ex.: Recebimento, Picking). Apenas para identificação."
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
+            error={errors.name?.message}
+            {...register('name')}
           />
           <Select
             label="Andar do galpão"
             info="Em qual andar (piso) do prédio esta área fica. Definido pelo nº de andares do galpão."
-            value={form.floor}
-            onChange={(event) =>
-              setForm({ ...form, floor: event.target.value })
-            }
+            error={errors.floor?.message}
+            {...register('floor')}
           >
-            {Array.from({
-              length:
-                warehouses.find((w) => w.id === form.warehouseId)?.floors ?? 1
-            }).map((_, i) => (
+            {Array.from({ length: floorCount }).map((_, i) => (
               <option key={i + 1} value={String(i + 1)}>
                 Andar {i + 1}
               </option>
@@ -335,10 +321,8 @@ export default function AreasPage() {
             <Select
               label="Estantes"
               info="Quantas estantes (prateleiras) esta área tem. Cada estante recebe um código (A1, B2...)."
-              value={form.aisles}
-              onChange={(event) =>
-                setForm({ ...form, aisles: event.target.value })
-              }
+              error={errors.aisles?.message}
+              {...register('aisles')}
             >
               {Array.from({ length: 12 }).map((_, i) => (
                 <option key={i + 1} value={String(i + 1)}>
@@ -349,10 +333,8 @@ export default function AreasPage() {
             <Select
               label="Níveis"
               info="Quantos níveis (andares da prateleira) cada estante tem. Níveis baixos = acesso mais fácil."
-              value={form.levels}
-              onChange={(event) =>
-                setForm({ ...form, levels: event.target.value })
-              }
+              error={errors.levels?.message}
+              {...register('levels')}
             >
               {Array.from({ length: 12 }).map((_, i) => (
                 <option key={i + 1} value={String(i + 1)}>
@@ -363,10 +345,8 @@ export default function AreasPage() {
             <Select
               label="Pontos/nível"
               info="Quantas posições (pontos) cada nível tem. Cada ponto é um endereço único de armazenagem."
-              value={form.positionsPerLevel}
-              onChange={(event) =>
-                setForm({ ...form, positionsPerLevel: event.target.value })
-              }
+              error={errors.positionsPerLevel?.message}
+              {...register('positionsPerLevel')}
             >
               {Array.from({ length: 30 }).map((_, i) => (
                 <option key={i + 1} value={String(i + 1)}>
@@ -389,7 +369,9 @@ export default function AreasPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              Salvar
+            </Button>
           </div>
         </form>
       </Modal>

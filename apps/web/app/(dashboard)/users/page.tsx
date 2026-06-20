@@ -1,6 +1,8 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -11,23 +13,9 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
 import { DataTable, Column } from '@/components/ui/DataTable'
+import { userSchema, userDefaults, type UserInput } from '@/lib/schemas/user'
 import type { Paginated, Role, User } from '@/lib/types'
 
-interface FormState {
-  name: string
-  email: string
-  password: string
-  roleId: string
-  active: boolean
-}
-
-const emptyForm: FormState = {
-  name: '',
-  email: '',
-  password: '',
-  roleId: '',
-  active: true
-}
 const PAGE_SIZE = 20
 
 export default function UsersPage() {
@@ -39,8 +27,18 @@ export default function UsersPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError: setFieldError,
+    formState: { errors, isSubmitting }
+  } = useForm<UserInput>({
+    resolver: zodResolver(userSchema),
+    defaultValues: userDefaults
+  })
 
   const load = useCallback(async (target: number) => {
     const result = await apiRequest<Paginated<User>>(
@@ -63,14 +61,14 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ ...emptyForm, roleId: roles[0]?.id ?? '' })
+    reset({ ...userDefaults, roleId: roles[0]?.id ?? '' })
     setError(null)
     setModalOpen(true)
   }
 
   const openEdit = (user: User) => {
     setEditingId(user.id)
-    setForm({
+    reset({
       name: user.name,
       email: user.email,
       password: '',
@@ -81,19 +79,22 @@ export default function UsersPage() {
     setModalOpen(true)
   }
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
+  const onSubmit = async (values: UserInput) => {
     setError(null)
+    if (!editingId && !values.password) {
+      setFieldError('password', { message: 'Informe a senha' })
+      return
+    }
     try {
       if (editingId) {
         const body: Record<string, unknown> = {
-          name: form.name,
-          email: form.email,
-          roleId: form.roleId,
-          active: form.active
+          name: values.name,
+          email: values.email,
+          roleId: values.roleId,
+          active: values.active
         }
-        if (form.password) {
-          body.password = form.password
+        if (values.password) {
+          body.password = values.password
         }
         await apiRequest(`/users/${editingId}`, { method: 'PATCH', body })
         setModalOpen(false)
@@ -102,11 +103,11 @@ export default function UsersPage() {
         await apiRequest('/users', {
           method: 'POST',
           body: {
-            name: form.name,
-            email: form.email,
-            password: form.password,
-            roleId: form.roleId,
-            active: form.active
+            name: values.name,
+            email: values.email,
+            password: values.password,
+            roleId: values.roleId,
+            active: values.active
           }
         })
         setModalOpen(false)
@@ -199,38 +200,32 @@ export default function UsersPage() {
         title={editingId ? 'Editar usuário' : 'Novo usuário'}
         onClose={() => setModalOpen(false)}
       >
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Input
             label="Nome"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
+            info="Nome completo do usuário."
+            error={errors.name?.message}
+            {...register('name')}
           />
           <Input
             label="E-mail"
+            info="E-mail usado para login e identificação do usuário."
             type="email"
-            value={form.email}
-            onChange={(event) =>
-              setForm({ ...form, email: event.target.value })
-            }
-            required
+            error={errors.email?.message}
+            {...register('email')}
           />
           <Input
             label={editingId ? 'Senha (deixe em branco para manter)' : 'Senha'}
+            info="Mínimo de 6 caracteres. Na edição, deixe em branco para manter a senha atual."
             type="password"
-            value={form.password}
-            onChange={(event) =>
-              setForm({ ...form, password: event.target.value })
-            }
-            required={!editingId}
+            error={errors.password?.message}
+            {...register('password')}
           />
           <Select
             label="Perfil"
-            value={form.roleId}
-            onChange={(event) =>
-              setForm({ ...form, roleId: event.target.value })
-            }
-            required
+            info="Perfil de acesso que define as permissões do usuário."
+            error={errors.roleId?.message}
+            {...register('roleId')}
           >
             <option value="" disabled>
               Selecione um perfil
@@ -242,13 +237,7 @@ export default function UsersPage() {
             ))}
           </Select>
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-            <input
-              type="checkbox"
-              checked={form.active}
-              onChange={(event) =>
-                setForm({ ...form, active: event.target.checked })
-              }
-            />
+            <input type="checkbox" {...register('active')} />
             Usuário ativo
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -260,7 +249,9 @@ export default function UsersPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              Salvar
+            </Button>
           </div>
         </form>
       </Modal>

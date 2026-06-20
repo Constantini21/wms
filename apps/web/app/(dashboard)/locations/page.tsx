@@ -1,6 +1,8 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { FiEdit2, FiMapPin, FiPlus, FiPrinter, FiTrash2 } from 'react-icons/fi'
 import { apiRequest } from '@/lib/api'
@@ -14,31 +16,13 @@ import { Modal } from '@/components/ui/Modal'
 import { RangeField } from '@/components/ui/RangeField'
 import { DataTable, Column } from '@/components/ui/DataTable'
 import { CodeLabel } from '@/components/CodeLabel'
+import {
+  locationSchema,
+  locationDefaults,
+  type LocationInput
+} from '@/lib/schemas/location'
 import type { Area, Location, Paginated } from '@/lib/types'
 
-interface FormState {
-  code: string
-  name: string
-  areaId: string
-  aisle: string
-  floor: string
-  position: string
-  barcode: string
-  accessibility: number
-  capacity: string
-}
-
-const emptyForm: FormState = {
-  code: '',
-  name: '',
-  areaId: '',
-  aisle: '',
-  floor: '',
-  position: '',
-  barcode: '',
-  accessibility: 5,
-  capacity: ''
-}
 const PAGE_SIZE = 20
 
 export default function LocationsPage() {
@@ -51,9 +35,19 @@ export default function LocationsPage() {
   const [areas, setAreas] = useState<Area[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [labelLocation, setLabelLocation] = useState<Location | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors, isSubmitting }
+  } = useForm<LocationInput>({
+    resolver: zodResolver(locationSchema),
+    defaultValues: locationDefaults
+  })
 
   const load = useCallback(async (target: number) => {
     const result = await apiRequest<Paginated<Location>>(
@@ -76,14 +70,14 @@ export default function LocationsPage() {
 
   const openCreate = () => {
     setEditingId(null)
-    setForm({ ...emptyForm, areaId: areas[0]?.id ?? '' })
+    reset({ ...locationDefaults, areaId: areas[0]?.id ?? '' })
     setError(null)
     setModalOpen(true)
   }
 
   const openEdit = (location: Location) => {
     setEditingId(location.id)
-    setForm({
+    reset({
       code: location.code,
       name: location.name ?? '',
       areaId: location.areaId,
@@ -92,26 +86,25 @@ export default function LocationsPage() {
       position: location.position ?? '',
       barcode: location.barcode ?? '',
       accessibility: location.accessibility ?? 5,
-      capacity: location.capacity?.toString() ?? ''
+      capacity: location.capacity ?? undefined
     })
     setError(null)
     setModalOpen(true)
   }
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
+  const onSubmit = async (values: LocationInput) => {
     setError(null)
     try {
       const body = {
-        code: form.code,
-        name: form.name || undefined,
-        areaId: form.areaId,
-        aisle: form.aisle || undefined,
-        floor: form.floor || undefined,
-        position: form.position || undefined,
-        barcode: form.barcode || undefined,
-        accessibility: form.accessibility,
-        capacity: form.capacity ? Number(form.capacity) : undefined
+        code: values.code,
+        name: values.name || undefined,
+        areaId: values.areaId,
+        aisle: values.aisle || undefined,
+        floor: values.floor || undefined,
+        position: values.position || undefined,
+        barcode: values.barcode || undefined,
+        accessibility: values.accessibility,
+        capacity: values.capacity
       }
       if (editingId) {
         await apiRequest(`/locations/${editingId}`, { method: 'PATCH', body })
@@ -233,14 +226,12 @@ export default function LocationsPage() {
         title={editingId ? 'Editar localização' : 'Nova localização'}
         onClose={() => setModalOpen(false)}
       >
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Select
             label="Área"
-            value={form.areaId}
-            onChange={(event) =>
-              setForm({ ...form, areaId: event.target.value })
-            }
-            required
+            info="Área (com estantes) onde esta localização fica."
+            error={errors.areaId?.message}
+            {...register('areaId')}
           >
             <option value="" disabled>
               Selecione uma área
@@ -255,60 +246,62 @@ export default function LocationsPage() {
           </Select>
           <Input
             label="Código"
-            value={form.code}
-            onChange={(event) => setForm({ ...form, code: event.target.value })}
-            required
+            info="Código único do endereço/localização (ex.: A-07-02)."
+            error={errors.code?.message}
+            {...register('code')}
           />
           <Input
             label="Nome (opcional)"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            info="Nome descritivo opcional para a localização."
+            error={errors.name?.message}
+            {...register('name')}
           />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Input
               label="Estante"
-              value={form.aisle}
-              onChange={(event) =>
-                setForm({ ...form, aisle: event.target.value })
-              }
+              info="Código da estante a que pertence (ex.: A1)."
+              error={errors.aisle?.message}
+              {...register('aisle')}
             />
             <Input
               label="Nível"
-              value={form.floor}
-              onChange={(event) =>
-                setForm({ ...form, floor: event.target.value })
-              }
+              info="Nível (andar da prateleira) da localização."
+              error={errors.floor?.message}
+              {...register('floor')}
             />
             <Input
               label="Posição"
-              value={form.position}
-              onChange={(event) =>
-                setForm({ ...form, position: event.target.value })
-              }
+              info="Posição (ponto) dentro do nível."
+              error={errors.position?.message}
+              {...register('position')}
             />
           </div>
-          <RangeField
-            label="Facilidade de acesso"
-            value={form.accessibility}
-            onChange={(value) => setForm({ ...form, accessibility: value })}
-            hint="0 = difícil acesso (alto/fundo), 10 = fácil acesso (frente/altura ideal)"
+          <Controller
+            control={control}
+            name="accessibility"
+            render={({ field }) => (
+              <RangeField
+                label="Facilidade de acesso"
+                value={field.value}
+                onChange={field.onChange}
+                hint="0 = difícil acesso (alto/fundo), 10 = fácil acesso (frente/altura ideal)"
+              />
+            )}
           />
           <Input
             label="Capacidade (unidades, opcional)"
+            info="Quantidade máxima de unidades. Em branco = ilimitado."
             type="number"
-            value={form.capacity}
-            onChange={(event) =>
-              setForm({ ...form, capacity: event.target.value })
-            }
+            error={errors.capacity?.message}
             placeholder="Vazio = ilimitado"
+            {...register('capacity')}
           />
           <Input
             label="Código de barras / QR (opcional)"
-            value={form.barcode}
-            onChange={(event) =>
-              setForm({ ...form, barcode: event.target.value })
-            }
+            info="Código próprio da etiqueta. Em branco = usa o código da localização."
+            error={errors.barcode?.message}
             placeholder="Deixe em branco para usar o código"
+            {...register('barcode')}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2">
@@ -319,7 +312,9 @@ export default function LocationsPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              Salvar
+            </Button>
           </div>
         </form>
       </Modal>
